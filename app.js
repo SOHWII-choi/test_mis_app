@@ -17,7 +17,7 @@ const RENDER_MAP={
   'admin-upload':renderAdminUpload,
   'admin-metrics':renderAdminMetrics,
   'admin-users':renderAdminUsers,
-  'admin-export':()=>{},
+  'admin-export':()=>{ initEditMonthSelect(); loadEditData(); },
   'admin-beta':renderAdminBeta,
 };
 
@@ -206,7 +206,144 @@ function shakeInput(id){
   setTimeout(()=>{el.style.borderColor='';},1200);
 }
 
-// ── 앱 시작 ──
+// ════════════════════════════════════════════
+//  양식 다운로드
+// ════════════════════════════════════════════
+const TEMPLATE_FILES = {
+  finance:  '재무지표_상세양식.xlsx',
+  wireless: '무선가입자_양식.xlsx',
+  channel:  '채널별실적_양식.xlsx',
+  quality:  '품질지표_양식.xlsx',
+  hr:       '인력_인프라_전략상품_양식.xlsx',
+};
+
+function downloadTemplate(type){
+  const filename = TEMPLATE_FILES[type];
+  if(!filename){ showToast('⚠ 양식 파일을 찾을 수 없습니다'); return; }
+  // 같은 서버 경로의 파일 다운로드
+  const a = document.createElement('a');
+  a.href = filename;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  showToast(`📥 "${filename}" 다운로드 시작`);
+}
+
+// ════════════════════════════════════════════
+//  월별 수기 편집
+// ════════════════════════════════════════════
+function initEditMonthSelect(){
+  const sel = document.getElementById('edit-month');
+  if(!sel) return;
+  sel.innerHTML = '';
+  const months = RAW.finance?.months || [];
+  months.forEach((m,i)=>{
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = m;
+    if(i === months.length-1) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function loadEditData(){
+  const cat = document.getElementById('edit-category')?.value;
+  const mIdx = parseInt(document.getElementById('edit-month')?.value ?? '-1');
+  const editor = document.getElementById('data-editor');
+  if(!editor || !cat || mIdx < 0) return;
+
+  const d = RAW[cat];
+  if(!d){ editor.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">데이터 없음</div>'; return; }
+
+  const month = d.months?.[mIdx] || '';
+  const fields = Object.keys(d).filter(k => k !== 'months' && Array.isArray(d[k]));
+
+  if(fields.length === 0){
+    editor.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">편집 가능한 필드가 없습니다</div>';
+    return;
+  }
+
+  let html = `
+    <div style="font-size:11px;color:var(--text3);margin-bottom:12px;padding:8px 12px;background:rgba(91,110,245,.06);border-radius:8px;border:1px solid rgba(91,110,245,.15)">
+      ✏️ <b>${month}</b> 데이터 편집 중 · ${fields.length}개 항목 · 저장 버튼으로 DB 반영
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">`;
+
+  fields.forEach(f => {
+    const val = d[f][mIdx];
+    const displayVal = (val !== null && val !== undefined) ? val : '';
+    html += `
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:10px 12px">
+        <label style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.3px;text-transform:uppercase;display:block;margin-bottom:5px">${f}</label>
+        <input
+          class="form-input"
+          id="edit-field-${f}"
+          data-field="${f}"
+          type="number"
+          step="any"
+          value="${displayVal}"
+          style="padding:6px 8px;font-size:12px;font-family:var(--mono)"
+        >
+      </div>`;
+  });
+
+  html += `</div>`;
+  editor.innerHTML = html;
+}
+
+async function saveEditData(){
+  const cat = document.getElementById('edit-category')?.value;
+  const mIdx = parseInt(document.getElementById('edit-month')?.value ?? '-1');
+  if(!cat || mIdx < 0){ showToast('⚠ 카테고리와 월을 선택하세요'); return; }
+
+  const d = RAW[cat];
+  if(!d) return;
+
+  const fields = Object.keys(d).filter(k => k !== 'months' && Array.isArray(d[k]));
+  let changed = 0;
+
+  fields.forEach(f => {
+    const inp = document.getElementById(`edit-field-${f}`);
+    if(!inp) return;
+    const newVal = inp.value === '' ? null : parseFloat(inp.value);
+    const oldVal = d[f][mIdx];
+    if(newVal !== oldVal){
+      d[f][mIdx] = newVal;
+      changed++;
+    }
+  });
+
+  if(changed === 0){ showToast('변경된 값이 없습니다'); return; }
+
+  // Supabase에 저장
+  try{
+    const { error } = await sb.from('kts_data').upsert({
+      category: cat,
+      data: d,
+      updated_by: S.user?.name || '관리자',
+      updated_at: new Date().toISOString()
+    });
+    if(error) throw error;
+
+    // 업로드 이력 기록
+    await sb.from('kts_upload_log').insert({
+      filename: `수기편집_${cat}_${d.months[mIdx]}`,
+      category: cat,
+      period: d.months[mIdx],
+      rows_count: changed,
+      uploaded_by: S.user?.name || '관리자',
+      status: 'success',
+      note: `수기 편집 ${changed}개 항목 수정`
+    });
+
+    showToast(`✅ ${d.months[mIdx]} ${cat} 데이터 ${changed}개 항목 저장 완료`);
+    // 화면 새로고침
+    if(RENDER_MAP[S.page]) RENDER_MAP[S.page]();
+  } catch(e){
+    showToast(`❌ 저장 실패: ${e.message}`);
+  }
+}
 window.addEventListener('DOMContentLoaded', async ()=>{
   // ① Service Worker 등록 (PWA)
   if('serviceWorker' in navigator){
