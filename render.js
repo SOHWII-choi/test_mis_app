@@ -173,9 +173,11 @@ function gd(key){
 }
 function getPL(){const{s,e}=S.pi;return`${RAW.finance.months[s]} ~ ${RAW.finance.months[e]}`;}
 
-function kpi(label,value,unit,diff,cls,sub=''){
+function kpi(label,value,unit,diff,cls,sub='',onclickKey=''){
   const badge=diff!=null?`<div class="kpi-badge ${diff>=0?'kbd-up':'kbd-dn'}">${diff>=0?'▲':'▼'} ${Math.abs(diff).toFixed(1)}%</div>`:'';
-  return`<div class="kpi-card kc-${cls}"><div class="kpi-label">${label}</div><div class="kpi-value">${value}<span class="kpi-unit">${unit}</span></div>${badge}${sub?`<div class="kpi-sub">${sub}</div>`:''}</div>`;
+  const clickAttr = onclickKey ? `onclick="openKpiPopup('${onclickKey}')" style="cursor:pointer;user-select:none"` : '';
+  const hoverHint = onclickKey ? `<div style="font-size:9px;color:var(--text3);margin-top:5px;opacity:.7">🔍 클릭해서 상세분석</div>` : '';
+  return`<div class="kpi-card kc-${cls}" ${clickAttr}><div class="kpi-label">${label}</div><div class="kpi-value">${value}<span class="kpi-unit">${unit}</span></div>${badge}${sub?`<div class="kpi-sub">${sub}</div>`:''}${hoverHint}</div>`;
 }
 
 // ═══════════════════════════════════════════
@@ -620,23 +622,17 @@ window.renderFinance=function(){
   const dp = gd('platform');
   const yoyPlat = yoySum(dp.유통플랫폼_합계||dp.매출_합계||[], dp.months||d.months);
 
-  // KPI 카드 — 클릭 시 상세 팝업
-  function kpiClickable(label, value, unit, badge, cls, sub, clickKey){
-    const base = kpi(label,value,unit,badge,cls,sub);
-    return base.replace('<div class="kpi-card', `<div onclick="openFinKpiDetail('${clickKey}')" style="cursor:pointer" class="kpi-card`);
-  }
-
   document.getElementById('fin-kpi').innerHTML=`
     <div style="grid-column:1/-1;font-size:10px;color:var(--text3);background:rgba(91,110,245,.06);border:1px solid rgba(91,110,245,.15);border-radius:8px;padding:6px 12px;display:flex;align-items:center;gap:6px">
       <span style="font-size:12px">📊</span> <b style="color:var(--primary)">비교기준:</b> ${compLabel}
-      <span style="margin-left:6px;color:var(--text3)">· KPI 카드 클릭 시 상세 분석</span>
+      <span style="margin-left:6px;color:var(--text3)">· 각 카드 클릭 시 상세 분석</span>
     </div>`+[
-    kpiClickable('총매출 (누계)',fmt(yoyTot?.cur??sum(d.총매출),1),'억원',yoyBadge(yoyTot),'gold',`전년동기 ${fmt(yoyTot?.prev??0,1)}억`,'총매출'),
-    kpiClickable('통신매출 (누계)',fmt(yoyTong?.cur??sum(d.통신매출),1),'억원',yoyBadge(yoyTong),'blue',`전년동기 ${fmt(yoyTong?.prev??0,1)}억`,'통신매출'),
-    kpiClickable('영업이익 (누계)',fmt(yoyOp?.cur??sum(d.영업이익),1),'억원',yoyBadge(yoyOp),(yoyOp?.cur??sum(d.영업이익))>=0?'green':'red',`전년동기 ${fmt(yoyOp?.prev??0,1)}억`,'영업이익'),
-    kpiClickable('판관비 (누계)',fmt(yoyOpex?.cur??sum(d.판관비),1),'억원',yoyBadge(yoyOpex),'purple',`인건비 ${fmt(sum(d.인건비),1)}억`,'판관비'),
-    kpiClickable('마케팅비 (누계)',fmt(yoyMkt?.cur??sum(d.마케팅비),1),'억원',yoyBadge(yoyMkt),'orange',`전년동기 ${fmt(yoyMkt?.prev??0,1)}억`,'마케팅비'),
-    kpiClickable('유통플랫폼 (누계)',fmt(yoyPlat?.cur??sum(dp.유통플랫폼_합계||dp.매출_합계||[]),1),'억원',yoyBadge(yoyPlat),'teal',`전년동기 ${fmt(yoyPlat?.prev??0,1)}억`,'유통플랫폼'),
+    kpi('총매출 (누계)',fmt(yoyTot?.cur??sum(d.총매출),1),'억원',yoyBadge(yoyTot),'gold',`전년동기 ${fmt(yoyTot?.prev??0,1)}억`,'fin:총매출'),
+    kpi('통신매출 (누계)',fmt(yoyTong?.cur??sum(d.통신매출),1),'억원',yoyBadge(yoyTong),'blue',`전년동기 ${fmt(yoyTong?.prev??0,1)}억`,'fin:통신매출'),
+    kpi('영업이익 (누계)',fmt(yoyOp?.cur??sum(d.영업이익),1),'억원',yoyBadge(yoyOp),(yoyOp?.cur??sum(d.영업이익))>=0?'green':'red',`전년동기 ${fmt(yoyOp?.prev??0,1)}억`,'fin:영업이익'),
+    kpi('판관비 (누계)',fmt(yoyOpex?.cur??sum(d.판관비),1),'억원',yoyBadge(yoyOpex),'purple',`인건비 ${fmt(sum(d.인건비),1)}억`,'fin:판관비'),
+    kpi('마케팅비 (누계)',fmt(yoyMkt?.cur??sum(d.마케팅비),1),'억원',yoyBadge(yoyMkt),'orange',`전년동기 ${fmt(yoyMkt?.prev??0,1)}억`,'fin:마케팅비'),
+    kpi('유통플랫폼 (누계)',fmt(yoyPlat?.cur??sum(dp.유통플랫폼_합계||dp.매출_합계||[]),1),'억원',yoyBadge(yoyPlat),'teal',`전년동기 ${fmt(yoyPlat?.prev??0,1)}억`,'fin:유통플랫폼'),
   ].join('');
 
   // 공통 툴팁/포인트 설정 (융통성 높임)
@@ -848,7 +844,7 @@ window.renderWired=function(){
 window.renderOrg=function(){
   const d=gd('org'),chs=['소매','도매','디지털','B2B','소상공인'];
   const tots=chs.map(c=>sum(d[c]||[])),grand=sum(tots);
-  document.getElementById('org-kpi').innerHTML=chs.map((c,i)=>kpi(c+' CAPA',fmt(tots[i]),'건',null,['gold','teal','blue','purple','orange'][i],`비중 ${grand?((tots[i]/grand*100).toFixed(1)):0}%`)).join('');
+  document.getElementById('org-kpi').innerHTML=chs.map((c,i)=>kpi(c+' CAPA',fmt(tots[i]),'건',null,['gold','teal','blue','purple','orange'][i],`비중 ${grand?((tots[i]/grand*100).toFixed(1)):0}%`,`org:${c}`)).join('');
   bar('ch-org-bar',d.months,chs.map((c,i)=>({label:c,data:d[c]||[],color:COLORS[i],bg:COLORS_A[i]})),true);
   mkC('ch-org-pie',{type:'doughnut',data:{labels:chs,datasets:[{data:tots,backgroundColor:COLORS_A.slice(0,5).map(c=>c.replace('0.12','0.70')),borderColor:COLORS.slice(0,5),borderWidth:2,borderRadius:3}]},options:{animation:false,animations:false,responsive:false,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:12,color:'#4a5380',font:{size:11},usePointStyle:true}},tooltip:{backgroundColor:'#fff',titleColor:'#1a1f36',bodyColor:'#4a5380',borderColor:'#e4e7f0',borderWidth:1,cornerRadius:10}}}});
   line('ch-org-trend',d.months,[{label:'소매',data:d.소매},{label:'도매',data:d.도매,color:C.teal},{label:'디지털',data:d.디지털,color:C.blue}]);
@@ -987,129 +983,180 @@ window.renderStrategy=function(){
 
 // ── 인력 ──
 
-// ════════════════════════════════════════
-//  재무 KPI 상세 팝업
-// ════════════════════════════════════════
-function openFinKpiDetail(key){
-  const d = gd('finance');
-  const dp = gd('platform');
+// ════════════════════════════════════════════════
+//  범용 KPI 팝업 — 모든 KPI 카드 클릭 시 호출
+//  key 형식: 'fin:총매출' | 'org:소매' | 'wl:유지' 등
+// ════════════════════════════════════════════════
+function openKpiPopup(key){
+  try{
+    const parts = key.split(':');
+    const ns = parts[0], name = parts[1];
 
-  const MAP = {
-    '총매출':      { arr: d.총매출,   label:'총매출',      unit:'억원', color:'var(--gold)',    icon:'💰', desc:'수수료매출+상품매출 합산' },
-    '통신매출':    { arr: d.통신매출,  label:'통신매출',    unit:'억원', color:'var(--blue)',    icon:'📡', desc:'무선/유선 수수료매출 합산' },
-    '영업이익':    { arr: d.영업이익,  label:'영업이익',    unit:'억원', color:'var(--green)',   icon:'📈', desc:'총매출 - 총비용' },
-    '판관비':      { arr: d.판관비,    label:'판관비',      unit:'억원', color:'var(--purple)',  icon:'💼', desc:'인건비+마케팅비+임차+감가+기타' },
-    '마케팅비':    { arr: d.마케팅비,  label:'마케팅비',    unit:'억원', color:'var(--orange)',  icon:'📢', desc:'판매수수료+판촉비+광고비' },
-    '유통플랫폼':  { arr: dp.유통플랫폼_합계||dp.매출_합계||[], label:'유통플랫폼매출', unit:'억원', color:'var(--teal)', icon:'♻️', desc:'시연폰/굿바이/코코넛/기타' },
-  };
+    const FIN = gd('finance');
+    const ORG = gd('org');
 
-  const info = MAP[key];
-  if(!info) return;
+    // 데이터 소스 매핑
+    const srcMap = {
+      'fin:총매출':    {arr:FIN.총매출,   label:'총매출',     unit:'억원', color:'#f59e0b', icon:'💰'},
+      'fin:통신매출':  {arr:FIN.통신매출, label:'통신매출',   unit:'억원', color:'#3b82f6', icon:'📡'},
+      'fin:영업이익':  {arr:FIN.영업이익, label:'영업이익',   unit:'억원', color:'#10b981', icon:'📈'},
+      'fin:판관비':    {arr:FIN.판관비,   label:'판관비',     unit:'억원', color:'#8b5cf6', icon:'💼'},
+      'fin:마케팅비':  {arr:FIN.마케팅비, label:'마케팅비',   unit:'억원', color:'#f97316', icon:'📢'},
+      'org:소매':      {arr:ORG.소매,    label:'소매 CAPA',   unit:'건',   color:'#f59e0b', icon:'🏪'},
+      'org:도매':      {arr:ORG.도매,    label:'도매 CAPA',   unit:'건',   color:'#06b6d4', icon:'🏭'},
+      'org:디지털':    {arr:ORG.디지털,  label:'디지털 CAPA', unit:'건',   color:'#3b82f6', icon:'💻'},
+      'org:B2B':       {arr:ORG.B2B,    label:'B2B CAPA',    unit:'건',   color:'#8b5cf6', icon:'🤝'},
+      'org:소상공인':  {arr:ORG.소상공인,label:'소상공인 CAPA',unit:'건',  color:'#f97316', icon:'🛒'},
+    };
 
-  const arr = info.arr;
-  const months = d.months;
-  if(!arr || arr.length === 0){ showToast('데이터 없음'); return; }
-
-  // QoQ (전월비)
-  function qoq(i){ if(i===0||!arr[i-1]) return null; return ((arr[i]-arr[i-1])/Math.abs(arr[i-1])*100); }
-  // YoY (전년동월비)
-  function yoyM(i){
-    const curPart = months[i]?.replace(/^'?\d+\./,'');
-    for(let j=i-1;j>=0;j--){
-      if(months[j]?.replace(/^'?\d+\./,'') === curPart) return ((arr[i]-arr[j])/Math.abs(arr[j])*100);
+    // 유통플랫폼은 별도 처리 (플랫폼 데이터가 없을 수 있음)
+    if(key === 'fin:유통플랫폼'){
+      const dp = gd('platform');
+      const platArr = dp.유통플랫폼_합계 || dp.매출_합계 || [];
+      srcMap['fin:유통플랫폼'] = {arr:platArr, label:'유통플랫폼매출', unit:'억원', color:'#06b6d4', icon:'♻️'};
     }
-    return null;
-  }
 
-  // 최근 12개월 또는 전체
-  const n = Math.min(arr.length, 12);
-  const recent = arr.slice(-n);
-  const recentM = months.slice(-n);
+    const info = srcMap[key];
+    if(!info){ showToast('해당 지표 데이터가 없습니다'); return; }
 
-  // 최고/최저/평균
-  const valid = arr.filter(v=>v!=null);
-  const maxV = Math.max(...valid), minV = Math.min(...valid);
-  const avgV = valid.reduce((s,v)=>s+v,0)/valid.length;
-  const maxI = arr.indexOf(maxV), minI = arr.indexOf(minV);
+    const arr = info.arr || [];
+    const months = ns==='fin' ? FIN.months : ORG.months;
+    const {label, unit, color, icon} = info;
 
-  // 연간 합계
-  const yearMap = {};
-  months.forEach((m,i)=>{
-    const y = m.match(/^'?(\d+)\./)?.[1];
-    if(y){ if(!yearMap[y]) yearMap[y]={sum:0,cnt:0}; yearMap[y].sum+=arr[i]||0; yearMap[y].cnt++; }
-  });
+    if(!arr.length){ showToast('데이터가 없습니다'); return; }
 
-  const tableRows = recentM.map((m,i)=>{
-    const ri = arr.length - n + i;
-    const v = arr[ri];
-    const q = qoq(ri), y = yoyM(ri);
-    const qStr = q!=null ? `<span style="color:${q>=0?'var(--green)':'var(--red)'};">${q>=0?'▲':'▼'}${Math.abs(q).toFixed(1)}%</span>` : '-';
-    const yStr = y!=null ? `<span style="color:${y>=0?'var(--green)':'var(--red)'};">${y>=0?'▲':'▼'}${Math.abs(y).toFixed(1)}%</span>` : '-';
-    return `<tr>
-      <td style="padding:8px 10px;font-size:11px;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap">${m}</td>
-      <td style="padding:8px 10px;font-size:12px;font-weight:700;font-family:var(--mono);text-align:right;border-bottom:1px solid var(--border);color:${v>=0?'var(--text)':'var(--red)'};">${fmt(v??0,1)}</td>
-      <td style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);font-size:11px">${qStr}</td>
-      <td style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);font-size:11px">${yStr}</td>
-    </tr>`;
-  }).join('');
+    const valid = arr.filter(v=>v!=null && !isNaN(v) && v!==0);
+    if(!valid.length){ showToast('유효한 데이터가 없습니다'); return; }
 
-  const yearRows = Object.entries(yearMap).map(([y,obj])=>`
-    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;text-align:center">
-      <div style="font-size:10px;color:var(--text3);font-weight:700;margin-bottom:4px">${y}년 합계</div>
-      <div style="font-size:16px;font-weight:800;font-family:var(--mono)">${fmt(obj.sum,1)}<span style="font-size:10px;color:var(--text3);margin-left:2px">${info.unit}</span></div>
-      <div style="font-size:10px;color:var(--text3);margin-top:2px">${obj.cnt}개월</div>
-    </div>`).join('');
+    const maxV = Math.max(...valid);
+    const minV = Math.min(...valid);
+    const avgV = valid.reduce((s,v)=>s+v,0)/valid.length;
+    const maxI = arr.findIndex(v=>v===maxV);
+    const minI = arr.findIndex(v=>v===minV);
 
-  document.getElementById('fin-kpi-modal-body').innerHTML = `
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px">
-      <div>
-        <div style="font-size:20px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px">
-          <span>${info.icon}</span> ${info.label} 상세 분석
+    // QoQ/YoY
+    function getQoQ(i){
+      if(i===0||arr[i-1]==null||arr[i-1]===0) return null;
+      return (arr[i]-arr[i-1])/Math.abs(arr[i-1])*100;
+    }
+    function getYoY(i){
+      const cPart = (months[i]||'').replace(/^'?\d+\./,'');
+      for(let j=i-1;j>=0;j--){
+        if((months[j]||'').replace(/^'?\d+\./,'')=== cPart && arr[j]!=null && arr[j]!==0)
+          return (arr[i]-arr[j])/Math.abs(arr[j])*100;
+      }
+      return null;
+    }
+
+    // 연간 합계
+    const yMap={};
+    (months||[]).forEach((m,i)=>{
+      const y=(m||'').match(/^'?(\d+)\./)?.[1]; if(!y)return;
+      if(!yMap[y]){yMap[y]={s:0,n:0};}
+      if(arr[i]!=null){yMap[y].s+=arr[i];yMap[y].n++;}
+    });
+
+    // 트렌드
+    const r3 = arr.slice(-3).filter(v=>v!=null);
+    const p3 = arr.slice(-6,-3).filter(v=>v!=null);
+    const rAvg = r3.length ? r3.reduce((s,v)=>s+v,0)/r3.length : 0;
+    const pAvg = p3.length ? p3.reduce((s,v)=>s+v,0)/p3.length : 0;
+    const tDir = pAvg===0 ? '보합' : rAvg>pAvg ? '상승' : rAvg<pAvg ? '하락' : '보합';
+    const tPct = pAvg ? Math.abs((rAvg-pAvg)/Math.abs(pAvg)*100).toFixed(1) : 0;
+    const tColor = tDir==='상승'?'#10b981':tDir==='하락'?'#ef4444':'#8b93b8';
+
+    // 최근 12개월 테이블
+    const n12 = Math.min(arr.length, 12);
+    const tableHTML = arr.slice(-n12).map((v,ti)=>{
+      const ri = arr.length-n12+ti;
+      const q=getQoQ(ri), y=getYoY(ri);
+      const isMax=ri===maxI, isMin=ri===minI;
+      const f=(x,u)=>fmt(x||(x===0?0:0), u==='억원'?1:0);
+      const qS=q!=null?`<span style="color:${q>=0?'#10b981':'#ef4444'};font-weight:700">${q>=0?'▲':'▼'}${Math.abs(q).toFixed(1)}%</span>`:'<span style="color:#d1d5db">—</span>';
+      const yS=y!=null?`<span style="color:${y>=0?'#10b981':'#ef4444'};font-weight:700">${y>=0?'▲':'▼'}${Math.abs(y).toFixed(1)}%</span>`:'<span style="color:#d1d5db">—</span>';
+      return `<tr style="${isMax?'background:rgba(16,185,129,.05)':isMin?'background:rgba(239,68,68,.05)':''}">
+        <td style="padding:8px 12px;font-size:11px;color:#4a5380;border-bottom:1px solid #f0f2f7;white-space:nowrap">${isMax?'🔺':isMin?'🔻':''} ${months[ri]||''}</td>
+        <td style="padding:8px 12px;font-size:12px;font-weight:700;font-family:monospace;text-align:right;border-bottom:1px solid #f0f2f7;color:${(v||0)>=0?'#1a1f36':'#ef4444'}">${f(v,unit)}</td>
+        <td style="padding:8px 12px;text-align:center;border-bottom:1px solid #f0f2f7;font-size:11px">${qS}</td>
+        <td style="padding:8px 12px;text-align:center;border-bottom:1px solid #f0f2f7;font-size:11px">${yS}</td>
+      </tr>`;
+    }).join('');
+
+    // 연간 카드
+    const yearHTML = Object.entries(yMap).map(([y,o])=>`
+      <div style="background:#f8f9fc;border:1px solid #e4e7f0;border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:10px;color:#8b93b8;font-weight:700;margin-bottom:4px">${y}년</div>
+        <div style="font-size:16px;font-weight:800;font-family:monospace;color:${color}">${fmt(o.s, unit==='억원'?1:0)}</div>
+        <div style="font-size:10px;color:#8b93b8;margin-top:2px">${unit} · ${o.n}개월</div>
+      </div>`).join('');
+
+    const f2=(v,u)=>fmt(v,u==='억원'?1:0);
+
+    document.getElementById('kpi-popup-body').innerHTML = `
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span style="font-size:22px">${icon}</span>
+            <span style="font-size:20px;font-weight:800;color:#1a1f36">${label}</span>
+          </div>
+          <div style="font-size:11px;color:#8b93b8">단위: ${unit} · 총 ${arr.length}개월</div>
         </div>
-        <div style="font-size:11px;color:var(--text3);margin-top:3px">${info.desc} · 단위: ${info.unit}</div>
+        <button onclick="document.getElementById('kpi-popup-modal').classList.remove('open')"
+          style="background:#f0f2f7;border:none;color:#8b93b8;font-size:18px;cursor:pointer;border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
       </div>
-      <button onclick="document.getElementById('fin-kpi-modal').classList.remove('open')"
-        style="background:var(--bg3);border:none;color:var(--text3);font-size:18px;cursor:pointer;border-radius:8px;width:32px;height:32px;flex-shrink:0">✕</button>
-    </div>
 
-    <!-- 요약 KPI -->
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:18px">
-      ${[
-        ['최고', fmt(maxV,1), months[maxI]],
-        ['최저', fmt(minV,1), months[minI]],
-        ['평균', fmt(avgV,1), '기간 평균'],
-      ].map(([l,v,sub])=>`
-        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center">
-          <div style="font-size:10px;color:var(--text3);font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">${l}</div>
-          <div style="font-size:18px;font-weight:800;font-family:var(--mono);color:${info.color}">${v}<span style="font-size:10px;color:var(--text3);margin-left:2px">${info.unit}</span></div>
-          <div style="font-size:10px;color:var(--text3);margin-top:3px">${sub}</div>
-        </div>`).join('')}
-    </div>
+      <div style="background:linear-gradient(135deg,rgba(91,110,245,.06),rgba(6,182,212,.04));border:1px solid rgba(91,110,245,.15);border-radius:12px;padding:14px 16px;margin-bottom:16px">
+        <div style="font-size:10px;font-weight:700;color:#5b6ef5;margin-bottom:6px;letter-spacing:.3px;text-transform:uppercase">📊 트렌드 요약</div>
+        <div style="font-size:13px;color:#4a5380;line-height:1.8">
+          최근 3개월 평균 <b style="color:${color}">${f2(rAvg,unit)}${unit}</b>으로 직전 3개월 대비
+          <b style="color:${tColor}">${tDir} ${tPct}%</b> 추세입니다.<br>
+          기간 최고 <b style="color:#10b981">${f2(maxV,unit)}${unit}</b>(${months[maxI]||''}),
+          최저 <b style="color:#ef4444">${f2(minV,unit)}${unit}</b>(${months[minI]||''}),
+          평균 <b>${f2(avgV,unit)}${unit}</b>
+        </div>
+      </div>
 
-    <!-- 연간 합계 -->
-    <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">연간 합계</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-bottom:18px">
-      ${yearRows}
-    </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
+        ${[['🔺 최고',f2(maxV,unit)+unit,months[maxI]||'','#10b981'],
+           ['🔻 최저',f2(minV,unit)+unit,months[minI]||'','#ef4444'],
+           ['— 평균', f2(avgV,unit)+unit,'기간 평균','#6b7280']
+          ].map(([l,v,s,c])=>`
+          <div style="background:#f8f9fc;border:1px solid #e4e7f0;border-radius:10px;padding:12px;text-align:center">
+            <div style="font-size:10px;color:#8b93b8;font-weight:700;margin-bottom:5px">${l}</div>
+            <div style="font-size:16px;font-weight:800;font-family:monospace;color:${c}">${v}</div>
+            <div style="font-size:10px;color:#8b93b8;margin-top:3px">${s}</div>
+          </div>`).join('')}
+      </div>
 
-    <!-- 월별 QoQ/YoY 테이블 -->
-    <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">최근 ${n}개월 추이</div>
-    <div style="background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;max-height:280px;overflow-y:auto">
-      <table style="width:100%;border-collapse:collapse">
-        <thead style="position:sticky;top:0;background:var(--bg3)">
-          <tr>
-            <th style="padding:8px 10px;font-size:10px;color:var(--text3);text-align:left;font-weight:700">월</th>
-            <th style="padding:8px 10px;font-size:10px;color:var(--text3);text-align:right;font-weight:700">실적(${info.unit})</th>
-            <th style="padding:8px 10px;font-size:10px;color:var(--text3);text-align:center;font-weight:700">QoQ(전월비)</th>
-            <th style="padding:8px 10px;font-size:10px;color:var(--text3);text-align:center;font-weight:700">YoY(전년동월)</th>
-          </tr>
-        </thead>
-        <tbody>${tableRows}</tbody>
-      </table>
-    </div>`;
+      <div style="font-size:12px;font-weight:700;color:#1a1f36;margin-bottom:8px">📅 연간 합계</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;margin-bottom:16px">${yearHTML}</div>
 
-  document.getElementById('fin-kpi-modal').classList.add('open');
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-size:12px;font-weight:700;color:#1a1f36">📋 최근 ${n12}개월 (QoQ / YoY)</div>
+        <div style="font-size:10px;color:#8b93b8">🔺 최고월 · 🔻 최저월</div>
+      </div>
+      <div style="border:1px solid #e4e7f0;border-radius:10px;overflow:hidden;max-height:300px;overflow-y:auto">
+        <table style="width:100%;border-collapse:collapse">
+          <thead style="background:#f8f9fc;position:sticky;top:0">
+            <tr>
+              <th style="padding:8px 12px;font-size:10px;color:#8b93b8;text-align:left;font-weight:700">월</th>
+              <th style="padding:8px 12px;font-size:10px;color:#8b93b8;text-align:right;font-weight:700">실적 (${unit})</th>
+              <th style="padding:8px 12px;font-size:10px;color:#8b93b8;text-align:center;font-weight:700">QoQ</th>
+              <th style="padding:8px 12px;font-size:10px;color:#8b93b8;text-align:center;font-weight:700">YoY</th>
+            </tr>
+          </thead>
+          <tbody>${tableHTML}</tbody>
+        </table>
+      </div>`;
+
+    document.getElementById('kpi-popup-modal').classList.add('open');
+
+  } catch(err){
+    console.error('KPI popup error:', err);
+    showToast('팝업 오류: ' + err.message);
+  }
 }
+
 window.renderHR=function(){
   const d=gd('hr');
 

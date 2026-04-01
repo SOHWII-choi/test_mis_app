@@ -596,14 +596,14 @@
 </div>
 <div id="toast"></div>
 
-<!-- ══════════ 재무 KPI 상세 팝업 ══════════ -->
-<div id="fin-kpi-modal" onclick="if(event.target===this)this.classList.remove('open')"
+<!-- ══════════ 범용 KPI 팝업 ══════════ -->
+<div id="kpi-popup-modal" onclick="if(event.target===this)this.classList.remove('open')"
   style="display:none;position:fixed;inset:0;z-index:600;align-items:center;justify-content:center;background:rgba(0,0,0,.35);backdrop-filter:blur(4px);padding:16px">
-  <div style="background:#fff;border-radius:20px;padding:24px;width:100%;max-width:560px;max-height:88dvh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15)">
-    <div id="fin-kpi-modal-body"></div>
+  <div style="background:#fff;border-radius:20px;padding:24px;width:100%;max-width:580px;max-height:88dvh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15)">
+    <div id="kpi-popup-body"></div>
   </div>
 </div>
-<style>#fin-kpi-modal.open{display:flex}</style>
+<style>#kpi-popup-modal.open{display:flex}</style>
 
 <!-- ══════════ 무선 월별 현황 팝업 ══════════ -->
 <div id="wl-month-modal" onclick="if(event.target===this)this.classList.remove('open')"
