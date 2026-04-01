@@ -231,9 +231,9 @@
         <div id="pb-wireless"></div>
         <div id="wl-kpi" class="kpi-grid"></div>
         <div class="chart-grid">
-          <div class="chart-card wide"><div class="chart-title">무선 유지/CAPA 추이</div><div class="chart-sub">일반후불 전체 유지 가입자 · CAPA(신규+기변) · 해지 (명)</div><div class="cw cw-tall" data-tall="1"><canvas data-h="300" id="ch-wl-main"></canvas></div></div>
-          <div class="chart-card"><div class="chart-title">월별 순증</div><div class="chart-sub">일반후불 전체 순증 (명)</div><div class="cw"><canvas id="ch-wl-net"></canvas></div></div>
-          <div class="chart-card"><div class="chart-title">채널별 CAPA (누적 stacked)</div><div class="chart-sub">소매 · 도매 · 디지털 · B2B (명)</div><div class="cw"><canvas id="ch-wl-ch"></canvas></div></div>
+          <div class="chart-card wide"><div class="chart-title">무선 유지/CAPA 추이</div><div class="chart-sub">일반후불 전체 유지 가입자 · CAPA(신규+기변) · 해지 (건)</div><div class="cw cw-tall" data-tall="1"><canvas data-h="300" id="ch-wl-main"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title">월별 순증</div><div class="chart-sub">일반후불 전체 순증 (건)</div><div class="cw"><canvas id="ch-wl-net"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title">채널별 CAPA (누적 stacked)</div><div class="chart-sub">소매 · 도매 · 디지털 · B2B (건)</div><div class="cw"><canvas id="ch-wl-ch"></canvas></div></div>
         </div>
       </div>
 
@@ -277,7 +277,7 @@
         <div class="chart-grid">
           <div class="chart-card wide"><div class="chart-title">B2B 전체 실적 추이</div><div class="chart-sub">일반후불 · 운영후불 · 후불신규 (명)</div><div class="cw cw-tall" data-tall="1"><canvas data-h="300" id="ch-b2b-main"></canvas></div></div>
           <div class="chart-card"><div class="chart-title">기업 vs 법인 비교</div><div class="chart-sub">일반후불 기준 (명)</div><div class="cw"><canvas id="ch-b2b-seg"></canvas></div></div>
-          <div class="chart-card"><div class="chart-title">무선 가입자 유지</div><div class="chart-sub">B2B 전체 · 기업 · 법인 (명)</div><div class="cw"><canvas id="ch-b2b-sub"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title">무선 가입자 유지</div><div class="chart-sub">B2B 전체 · 기업 · 법인 (건)</div><div class="cw"><canvas id="ch-b2b-sub"></canvas></div></div>
         </div>
       </div>
 
@@ -348,8 +348,9 @@
         <div id="hr-kpi" class="kpi-grid"></div>
         <div class="chart-grid">
           <div class="chart-card wide"><div class="chart-title">인력 구성 추이</div><div class="chart-sub">전사계 · 영업직 · SC직 · 일반직 (명)</div><div class="cw cw-tall" data-tall="1"><canvas data-h="300" id="ch-hr-main"></canvas></div></div>
-          <div class="chart-card"><div class="chart-title">채널별 인력</div><div class="chart-sub">소매채널 · 도매채널 (명)</div><div class="cw"><canvas id="ch-hr-ch"></canvas></div></div>
-          <div class="chart-card"><div class="chart-title">영업본부별 인력</div><div class="chart-sub">강북/강남/강서/동부/서부 (명)</div><div class="cw"><canvas id="ch-hr-hq"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title">월별 퇴직 현황</div><div class="chart-sub">월별 퇴직 인원 (명)</div><div class="cw"><canvas id="ch-hr-ch"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title">직군별 인력 구성</div><div class="chart-sub">연마감 기준 영업직 · SC직 · 일반직 비율</div><div class="cw-donut"><canvas id="ch-hr-donut"></canvas></div></div>
+          <div class="chart-card wide"><div class="chart-title">영업본부별 인력 추이</div><div class="chart-sub">강북/강남/강서/동부/서부 (명)</div><div class="cw"><canvas id="ch-hr-hq"></canvas></div></div>
         </div>
       </div>
 
@@ -594,6 +595,15 @@
   </div>
 </div>
 <div id="toast"></div>
+
+<!-- ══════════ 재무 KPI 상세 팝업 ══════════ -->
+<div id="fin-kpi-modal" onclick="if(event.target===this)this.classList.remove('open')"
+  style="display:none;position:fixed;inset:0;z-index:600;align-items:center;justify-content:center;background:rgba(0,0,0,.35);backdrop-filter:blur(4px);padding:16px">
+  <div style="background:#fff;border-radius:20px;padding:24px;width:100%;max-width:560px;max-height:88dvh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15)">
+    <div id="fin-kpi-modal-body"></div>
+  </div>
+</div>
+<style>#fin-kpi-modal.open{display:flex}</style>
 
 <!-- ══════════ 무선 월별 현황 팝업 ══════════ -->
 <div id="wl-month-modal" onclick="if(event.target===this)this.classList.remove('open')"

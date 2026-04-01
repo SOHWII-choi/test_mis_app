@@ -64,15 +64,20 @@ function mkC(id, cfg){
     Object.values(cfg.options.scales).forEach(s=>{if(s)s.animation=false;});
   }
 
-  // 캔버스 크기를 컨테이너에 맞게 명시적 설정
+  // 캔버스 크기 명시적 설정
   const parent = el.parentElement;
   if(parent){
-    const w = parent.clientWidth || 400;
-    const h = el.dataset.h ? parseInt(el.dataset.h) : (parent.classList.contains('cw-tall') ? 300 : (parent.classList.contains('cw-donut') ? Math.min(parent.clientWidth||260,260) : 240));
-    el.width = w;
-    el.height = h;
-    el.style.width = w + 'px';
-    el.style.height = h + 'px';
+    const isDonut = parent.classList.contains('cw-donut');
+    if(isDonut){
+      // 도넛 차트: 무조건 240×240 정사각형
+      el.width = 240; el.height = 240;
+      el.style.width = '240px'; el.style.height = '240px';
+    } else {
+      const w = parent.clientWidth || 400;
+      const h = el.dataset.h ? parseInt(el.dataset.h) : (parent.classList.contains('cw-tall') ? 300 : 240);
+      el.width = w; el.height = h;
+      el.style.width = w+'px'; el.style.height = h+'px';
+    }
   }
 
   S.charts[id] = new Chart(el, cfg);
@@ -611,15 +616,27 @@ window.renderFinance=function(){
   const prevYearStr = curYearStr ? String(parseInt(curYearStr)-1) : '';
   const compLabel = `전년동기대비 (${prevYearStr}년 1~${lastMonthPart} vs ${curYearStr}년 1~${lastMonthPart})`;
 
+  // 유통플랫폼 데이터
+  const dp = gd('platform');
+  const yoyPlat = yoySum(dp.유통플랫폼_합계||dp.매출_합계||[], dp.months||d.months);
+
+  // KPI 카드 — 클릭 시 상세 팝업
+  function kpiClickable(label, value, unit, badge, cls, sub, clickKey){
+    const base = kpi(label,value,unit,badge,cls,sub);
+    return base.replace('<div class="kpi-card', `<div onclick="openFinKpiDetail('${clickKey}')" style="cursor:pointer" class="kpi-card`);
+  }
+
   document.getElementById('fin-kpi').innerHTML=`
     <div style="grid-column:1/-1;font-size:10px;color:var(--text3);background:rgba(91,110,245,.06);border:1px solid rgba(91,110,245,.15);border-radius:8px;padding:6px 12px;display:flex;align-items:center;gap:6px">
       <span style="font-size:12px">📊</span> <b style="color:var(--primary)">비교기준:</b> ${compLabel}
+      <span style="margin-left:6px;color:var(--text3)">· KPI 카드 클릭 시 상세 분석</span>
     </div>`+[
-    kpi('총매출 (누계)',fmt(yoyTot?.cur??sum(d.총매출),1),'억원',yoyBadge(yoyTot),'gold',`전년동기 ${fmt(yoyTot?.prev??0,1)}억`),
-    kpi('통신매출 (누계)',fmt(yoyTong?.cur??sum(d.통신매출),1),'억원',yoyBadge(yoyTong),'blue',`전년동기 ${fmt(yoyTong?.prev??0,1)}억`),
-    kpi('영업이익 (누계)',fmt(yoyOp?.cur??sum(d.영업이익),1),'억원',yoyBadge(yoyOp),(yoyOp?.cur??sum(d.영업이익))>=0?'green':'red',`전년동기 ${fmt(yoyOp?.prev??0,1)}억`),
-    kpi('판관비 (누계)',fmt(yoyOpex?.cur??sum(d.판관비),1),'억원',yoyBadge(yoyOpex),'purple',`인건비 ${fmt(sum(d.인건비),1)}억`),
-    kpi('마케팅비 (누계)',fmt(yoyMkt?.cur??sum(d.마케팅비),1),'억원',yoyBadge(yoyMkt),'orange',`전년동기 ${fmt(yoyMkt?.prev??0,1)}억`),
+    kpiClickable('총매출 (누계)',fmt(yoyTot?.cur??sum(d.총매출),1),'억원',yoyBadge(yoyTot),'gold',`전년동기 ${fmt(yoyTot?.prev??0,1)}억`,'총매출'),
+    kpiClickable('통신매출 (누계)',fmt(yoyTong?.cur??sum(d.통신매출),1),'억원',yoyBadge(yoyTong),'blue',`전년동기 ${fmt(yoyTong?.prev??0,1)}억`,'통신매출'),
+    kpiClickable('영업이익 (누계)',fmt(yoyOp?.cur??sum(d.영업이익),1),'억원',yoyBadge(yoyOp),(yoyOp?.cur??sum(d.영업이익))>=0?'green':'red',`전년동기 ${fmt(yoyOp?.prev??0,1)}억`,'영업이익'),
+    kpiClickable('판관비 (누계)',fmt(yoyOpex?.cur??sum(d.판관비),1),'억원',yoyBadge(yoyOpex),'purple',`인건비 ${fmt(sum(d.인건비),1)}억`,'판관비'),
+    kpiClickable('마케팅비 (누계)',fmt(yoyMkt?.cur??sum(d.마케팅비),1),'억원',yoyBadge(yoyMkt),'orange',`전년동기 ${fmt(yoyMkt?.prev??0,1)}억`,'마케팅비'),
+    kpiClickable('유통플랫폼 (누계)',fmt(yoyPlat?.cur??sum(dp.유통플랫폼_합계||dp.매출_합계||[]),1),'억원',yoyBadge(yoyPlat),'teal',`전년동기 ${fmt(yoyPlat?.prev??0,1)}억`,'유통플랫폼'),
   ].join('');
 
   // 공통 툴팁/포인트 설정 (융통성 높임)
@@ -815,23 +832,23 @@ function openWlMonthModal(idx){
 window.renderWired=function(){
   const d=gd('wired');
   document.getElementById('wd-kpi').innerHTML=[
-    kpi('유지 (전체)',fmt(last(d.유지_전체)),'명',pct(last(d.유지_전체),d.유지_전체[0]),'blue','인터넷+TV'),
-    kpi('신규 (최근월)',fmt(last(d.신규_전체)),'명',pct(last(d.신규_전체),prev(d.신규_전체)),'teal','유선 전체'),
-    kpi('해지 (최근월)',fmt(last(d.해지_전체)),'명',pct(last(d.해지_전체),prev(d.해지_전체)),'red','유선 전체'),
-    kpi('순증 (최근월)',fmt(last(d.순증_전체)),'명',null,last(d.순증_전체)>=0?'green':'red','유선 전체'),
-    kpi('인터넷 유지',fmt(last(d.유지_인터넷)),'명',pct(last(d.유지_인터넷),d.유지_인터넷[0]),'gold','인터넷 전용'),
-    kpi('인터넷 신규 (최근월)',fmt(last(d.신규_인터넷)),'명',null,'green','인터넷 전용'),
+    kpi('유지 (전체)',fmt(last(d.유지_전체)),'건',pct(last(d.유지_전체),d.유지_전체[0]),'blue','인터넷+TV'),
+    kpi('신규 (최근월)',fmt(last(d.신규_전체)),'건',pct(last(d.신규_전체),prev(d.신규_전체)),'teal','유선 전체'),
+    kpi('해지 (최근월)',fmt(last(d.해지_전체)),'건',pct(last(d.해지_전체),prev(d.해지_전체)),'red','유선 전체'),
+    kpi('순증 (최근월)',fmt(last(d.순증_전체)),'건',null,last(d.순증_전체)>=0?'green':'red','유선 전체'),
+    kpi('인터넷 유지',fmt(last(d.유지_인터넷)),'건',pct(last(d.유지_인터넷),d.유지_인터넷[0]),'gold','인터넷 전용'),
+    kpi('인터넷 신규 (최근월)',fmt(last(d.신규_인터넷)),'건',null,'green','인터넷 전용'),
   ].join('');
-  mkC('ch-wd-main',{type:'line',data:{labels:d.months,datasets:[{label:'유지(전체)',data:d.유지_전체,borderColor:C.blue,backgroundColor:C.blueA,borderWidth:2,pointRadius:0,tension:.3,fill:true,yAxisID:'y'},{label:'신규',data:d.신규_전체,borderColor:C.teal,backgroundColor:'transparent',borderWidth:2,pointRadius:2,tension:.3,yAxisID:'y2'},{label:'해지',data:d.해지_전체,borderColor:C.red,backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:.3,yAxisID:'y2'}]},options:baseOpts({scales:{x:{grid:{color:'rgba(42,53,85,0.5)'},ticks:{maxRotation:45,color:'#5c6e9a',font:{size:10}}},y:{grid:{color:'rgba(42,53,85,0.5)'},ticks:{color:'#5c6e9a'},title:{display:true,text:'유지(명)',color:'#5c6e9a'}},y2:{position:'right',grid:{display:false},ticks:{color:'#5c6e9a'},title:{display:true,text:'신규/해지(명)',color:'#5c6e9a'}}}})});
+  mkC('ch-wd-main',{type:'line',data:{labels:d.months,datasets:[{label:'유지(전체)',data:d.유지_전체,borderColor:C.blue,backgroundColor:C.blueA,borderWidth:2,pointRadius:0,tension:.3,fill:true,yAxisID:'y'},{label:'신규',data:d.신규_전체,borderColor:C.teal,backgroundColor:'transparent',borderWidth:2,pointRadius:2,tension:.3,yAxisID:'y2'},{label:'해지',data:d.해지_전체,borderColor:C.red,backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:.3,yAxisID:'y2'}]},options:baseOpts({scales:{x:{grid:{color:'rgba(42,53,85,0.5)'},ticks:{maxRotation:45,color:'#5c6e9a',font:{size:10}}},y:{grid:{color:'rgba(42,53,85,0.5)'},ticks:{color:'#5c6e9a'},title:{display:true,text:'유지(건)',color:'#5c6e9a'}},y2:{position:'right',grid:{display:false},ticks:{color:'#5c6e9a'},title:{display:true,text:'신규/해지(건)',color:'#5c6e9a'}}}})});
   mkC('ch-wd-net',{type:'bar',data:{labels:d.months,datasets:[{label:'순증(전체)',data:d.순증_전체,backgroundColor:d.순증_전체.map(v=>v>=0?C.greenA:C.redA),borderColor:d.순증_전체.map(v=>v>=0?C.green:C.red),borderWidth:1.5}]},options:baseOpts()});
-  mkC('ch-wd-inet',{type:'line',data:{labels:d.months,datasets:[{label:'인터넷유지',data:d.유지_인터넷,borderColor:C.gold,backgroundColor:C.goldA,borderWidth:2,pointRadius:0,tension:.3,fill:true,yAxisID:'y'},{label:'신규',data:d.신규_인터넷,borderColor:C.teal,backgroundColor:'transparent',borderWidth:2,pointRadius:2,tension:.3,yAxisID:'y2'},{label:'해지',data:d.해지_인터넷,borderColor:C.red,backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:.3,yAxisID:'y2'}]},options:baseOpts({scales:{x:{grid:{color:'rgba(42,53,85,0.5)'},ticks:{maxRotation:45,color:'#5c6e9a',font:{size:10}}},y:{grid:{color:'rgba(42,53,85,0.5)'},ticks:{color:'#5c6e9a'},title:{display:true,text:'유지(명)',color:'#5c6e9a'}},y2:{position:'right',grid:{display:false},ticks:{color:'#5c6e9a'},title:{display:true,text:'신규/해지(명)',color:'#5c6e9a'}}}})});
+  mkC('ch-wd-inet',{type:'line',data:{labels:d.months,datasets:[{label:'인터넷유지',data:d.유지_인터넷,borderColor:C.gold,backgroundColor:C.goldA,borderWidth:2,pointRadius:0,tension:.3,fill:true,yAxisID:'y'},{label:'신규',data:d.신규_인터넷,borderColor:C.teal,backgroundColor:'transparent',borderWidth:2,pointRadius:2,tension:.3,yAxisID:'y2'},{label:'해지',data:d.해지_인터넷,borderColor:C.red,backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:.3,yAxisID:'y2'}]},options:baseOpts({scales:{x:{grid:{color:'rgba(42,53,85,0.5)'},ticks:{maxRotation:45,color:'#5c6e9a',font:{size:10}}},y:{grid:{color:'rgba(42,53,85,0.5)'},ticks:{color:'#5c6e9a'},title:{display:true,text:'유지(건)',color:'#5c6e9a'}},y2:{position:'right',grid:{display:false},ticks:{color:'#5c6e9a'},title:{display:true,text:'신규/해지(건)',color:'#5c6e9a'}}}})});
 };
 
 // ── 조직별 ──
 window.renderOrg=function(){
   const d=gd('org'),chs=['소매','도매','디지털','B2B','소상공인'];
   const tots=chs.map(c=>sum(d[c]||[])),grand=sum(tots);
-  document.getElementById('org-kpi').innerHTML=chs.map((c,i)=>kpi(c+' CAPA',fmt(tots[i]),'명',null,['gold','teal','blue','purple','orange'][i],`비중 ${grand?((tots[i]/grand*100).toFixed(1)):0}%`)).join('');
+  document.getElementById('org-kpi').innerHTML=chs.map((c,i)=>kpi(c+' CAPA',fmt(tots[i]),'건',null,['gold','teal','blue','purple','orange'][i],`비중 ${grand?((tots[i]/grand*100).toFixed(1)):0}%`)).join('');
   bar('ch-org-bar',d.months,chs.map((c,i)=>({label:c,data:d[c]||[],color:COLORS[i],bg:COLORS_A[i]})),true);
   mkC('ch-org-pie',{type:'doughnut',data:{labels:chs,datasets:[{data:tots,backgroundColor:COLORS_A.slice(0,5).map(c=>c.replace('0.12','0.70')),borderColor:COLORS.slice(0,5),borderWidth:2,borderRadius:3}]},options:{animation:false,animations:false,responsive:false,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:12,color:'#4a5380',font:{size:11},usePointStyle:true}},tooltip:{backgroundColor:'#fff',titleColor:'#1a1f36',bodyColor:'#4a5380',borderColor:'#e4e7f0',borderWidth:1,cornerRadius:10}}}});
   line('ch-org-trend',d.months,[{label:'소매',data:d.소매},{label:'도매',data:d.도매,color:C.teal},{label:'디지털',data:d.디지털,color:C.blue}]);
@@ -841,11 +858,11 @@ window.renderOrg=function(){
 window.renderDigital=function(){
   const d=gd('digital');
   document.getElementById('dig-kpi').innerHTML=[
-    kpi('일반후불 (최근월)',fmt(last(d.일반후불_총계)),'명',pct(last(d.일반후불_총계),prev(d.일반후불_총계)),'gold','KT닷컴 전체'),
-    kpi('KT닷컴 직접 (최근월)',fmt(last(d['일반후불_KT닷컴'])),'명',pct(last(d['일반후불_KT닷컴']),prev(d['일반후불_KT닷컴'])),'teal',''),
-    kpi('운영후불 (최근월)',fmt(last(d.운영후불_총계)),'명',pct(last(d.운영후불_총계),prev(d.운영후불_총계)),'blue',''),
-    kpi('유심단독 (최근월)',fmt(last(d.유심단독)),'명',null,'purple',''),
-    kpi('유선순신규 (최근월)',fmt(last(d.유선순신규)),'명',pct(last(d.유선순신규),prev(d.유선순신규)),'green',''),
+    kpi('일반후불 (최근월)',fmt(last(d.일반후불_총계)),'건',pct(last(d.일반후불_총계),prev(d.일반후불_총계)),'gold','KT닷컴 전체'),
+    kpi('KT닷컴 직접 (최근월)',fmt(last(d['일반후불_KT닷컴'])),'건',pct(last(d['일반후불_KT닷컴']),prev(d['일반후불_KT닷컴'])),'teal',''),
+    kpi('운영후불 (최근월)',fmt(last(d.운영후불_총계)),'건',pct(last(d.운영후불_총계),prev(d.운영후불_총계)),'blue',''),
+    kpi('유심단독 (최근월)',fmt(last(d.유심단독)),'건',null,'purple',''),
+    kpi('유선순신규 (최근월)',fmt(last(d.유선순신규)),'건',pct(last(d.유선순신규),prev(d.유선순신규)),'green',''),
     kpi('디지털채널 인력',fmt(last(d.인력_총계)),'명',pct(last(d.인력_총계),prev(d.인력_총계)),'orange',''),
   ].join('');
   bar('ch-dig-main',d.months,[{label:'KT닷컴 직접',data:d['일반후불_KT닷컴']},{label:'O2O',data:d['일반후불_O2O'],color:C.teal,bg:C.tealA},{label:'온라인유통',data:d['일반후불_온라인유통'],color:C.blue,bg:C.blueA}],true);
@@ -857,12 +874,12 @@ window.renderDigital=function(){
 window.renderB2B=function(){
   const d=gd('b2b');
   document.getElementById('b2b-kpi').innerHTML=[
-    kpi('일반후불 (최근월)',fmt(last(d.전체_일반후불)),'명',pct(last(d.전체_일반후불),prev(d.전체_일반후불)),'gold','B2B 전체'),
-    kpi('후불신규 (최근월)',fmt(last(d.전체_후불신규)),'명',pct(last(d.전체_후불신규),prev(d.전체_후불신규)),'teal',''),
-    kpi('무선순증 (최근월)',fmt(last(d.전체_무선순증)),'명',null,last(d.전체_무선순증)>=0?'green':'red',''),
-    kpi('무선유지 가입자',fmt(last(d.가입자_무선유지)),'명',pct(last(d.가입자_무선유지),d.가입자_무선유지[0]),'blue','B2B 전체'),
-    kpi('기업 무선유지',fmt(last(d.가입자_기업무선)),'명',pct(last(d.가입자_기업무선),d.가입자_기업무선[0]),'purple','기업채널'),
-    kpi('법인 무선유지',fmt(last(d.가입자_법인무선)),'명',pct(last(d.가입자_법인무선),d.가입자_법인무선[0]),'orange','법인채널'),
+    kpi('일반후불 (최근월)',fmt(last(d.전체_일반후불)),'건',pct(last(d.전체_일반후불),prev(d.전체_일반후불)),'gold','B2B 전체'),
+    kpi('후불신규 (최근월)',fmt(last(d.전체_후불신규)),'건',pct(last(d.전체_후불신규),prev(d.전체_후불신규)),'teal',''),
+    kpi('무선순증 (최근월)',fmt(last(d.전체_무선순증)),'건',null,last(d.전체_무선순증)>=0?'green':'red',''),
+    kpi('무선유지 가입자',fmt(last(d.가입자_무선유지)),'건',pct(last(d.가입자_무선유지),d.가입자_무선유지[0]),'blue','B2B 전체'),
+    kpi('기업 무선유지',fmt(last(d.가입자_기업무선)),'건',pct(last(d.가입자_기업무선),d.가입자_기업무선[0]),'purple','기업채널'),
+    kpi('법인 무선유지',fmt(last(d.가입자_법인무선)),'건',pct(last(d.가입자_법인무선),d.가입자_법인무선[0]),'orange','법인채널'),
   ].join('');
   bar('ch-b2b-main',d.months,[{label:'일반후불',data:d.전체_일반후불},{label:'운영후불',data:d.전체_운영후불,color:C.teal,bg:C.tealA},{label:'후불신규',data:d.전체_후불신규,color:C.blue,bg:C.blueA}],true);
   line('ch-b2b-seg',d.months,[{label:'기업 일반후불',data:d.기업_일반후불},{label:'법인 일반후불',data:d.법인_일반후불,color:C.teal}]);
@@ -873,12 +890,12 @@ window.renderB2B=function(){
 window.renderSMB=function(){
   const d=gd('smb');
   document.getElementById('smb-kpi').innerHTML=[
-    kpi('일반후불 (최근월)',fmt(last(d.상품_일반후불)),'명',pct(last(d.상품_일반후불),prev(d.상품_일반후불)),'gold',''),
-    kpi('운영후불 (최근월)',fmt(last(d.상품_운영후불)),'명',pct(last(d.상품_운영후불),prev(d.상품_운영후불)),'teal',''),
-    kpi('인터넷순신규 (최근월)',fmt(last(d.인터넷순신규)),'명',pct(last(d.인터넷순신규),prev(d.인터넷순신규)),'blue',''),
-    kpi('기간 인터넷순신규 합계',fmt(sum(d.인터넷순신규)),'명',null,'green',''),
+    kpi('일반후불 (최근월)',fmt(last(d.상품_일반후불)),'건',pct(last(d.상품_일반후불),prev(d.상품_일반후불)),'gold',''),
+    kpi('운영후불 (최근월)',fmt(last(d.상품_운영후불)),'건',pct(last(d.상품_운영후불),prev(d.상품_운영후불)),'teal',''),
+    kpi('인터넷순신규 (최근월)',fmt(last(d.인터넷순신규)),'건',pct(last(d.인터넷순신규),prev(d.인터넷순신규)),'blue',''),
+    kpi('기간 인터넷순신규 합계',fmt(sum(d.인터넷순신규)),'건',null,'green',''),
     kpi('전담 인력 (최근월)',fmt(last(d.인력_총원)),'명',pct(last(d.인력_총원),d.인력_총원[0]),'purple','소상공인 채널'),
-    kpi('기간 일반후불 합계',fmt(sum(d.상품_일반후불)),'명',null,'orange',''),
+    kpi('기간 일반후불 합계',fmt(sum(d.상품_일반후불)),'건',null,'orange',''),
   ].join('');
   bar('ch-smb-main',d.months,[{label:'일반후불',data:d.상품_일반후불},{label:'운영후불',data:d.상품_운영후불,color:C.teal,bg:C.tealA},{label:'인터넷순신규',data:d.인터넷순신규,color:C.blue,bg:C.blueA}],false);
   bar('ch-smb-hq',d.months,[{label:'강북',data:d.본부별_강북},{label:'강남',data:d.본부별_강남,color:C.teal,bg:C.tealA},{label:'강서',data:d.본부별_강서,color:C.blue,bg:C.blueA},{label:'동부',data:d.본부별_동부,color:C.purple,bg:C.purpleA},{label:'서부',data:d.본부별_서부,color:C.orange,bg:C.orangeA}],true);
@@ -969,18 +986,201 @@ window.renderStrategy=function(){
 };
 
 // ── 인력 ──
+
+// ════════════════════════════════════════
+//  재무 KPI 상세 팝업
+// ════════════════════════════════════════
+function openFinKpiDetail(key){
+  const d = gd('finance');
+  const dp = gd('platform');
+
+  const MAP = {
+    '총매출':      { arr: d.총매출,   label:'총매출',      unit:'억원', color:'var(--gold)',    icon:'💰', desc:'수수료매출+상품매출 합산' },
+    '통신매출':    { arr: d.통신매출,  label:'통신매출',    unit:'억원', color:'var(--blue)',    icon:'📡', desc:'무선/유선 수수료매출 합산' },
+    '영업이익':    { arr: d.영업이익,  label:'영업이익',    unit:'억원', color:'var(--green)',   icon:'📈', desc:'총매출 - 총비용' },
+    '판관비':      { arr: d.판관비,    label:'판관비',      unit:'억원', color:'var(--purple)',  icon:'💼', desc:'인건비+마케팅비+임차+감가+기타' },
+    '마케팅비':    { arr: d.마케팅비,  label:'마케팅비',    unit:'억원', color:'var(--orange)',  icon:'📢', desc:'판매수수료+판촉비+광고비' },
+    '유통플랫폼':  { arr: dp.유통플랫폼_합계||dp.매출_합계||[], label:'유통플랫폼매출', unit:'억원', color:'var(--teal)', icon:'♻️', desc:'시연폰/굿바이/코코넛/기타' },
+  };
+
+  const info = MAP[key];
+  if(!info) return;
+
+  const arr = info.arr;
+  const months = d.months;
+  if(!arr || arr.length === 0){ showToast('데이터 없음'); return; }
+
+  // QoQ (전월비)
+  function qoq(i){ if(i===0||!arr[i-1]) return null; return ((arr[i]-arr[i-1])/Math.abs(arr[i-1])*100); }
+  // YoY (전년동월비)
+  function yoyM(i){
+    const curPart = months[i]?.replace(/^'?\d+\./,'');
+    for(let j=i-1;j>=0;j--){
+      if(months[j]?.replace(/^'?\d+\./,'') === curPart) return ((arr[i]-arr[j])/Math.abs(arr[j])*100);
+    }
+    return null;
+  }
+
+  // 최근 12개월 또는 전체
+  const n = Math.min(arr.length, 12);
+  const recent = arr.slice(-n);
+  const recentM = months.slice(-n);
+
+  // 최고/최저/평균
+  const valid = arr.filter(v=>v!=null);
+  const maxV = Math.max(...valid), minV = Math.min(...valid);
+  const avgV = valid.reduce((s,v)=>s+v,0)/valid.length;
+  const maxI = arr.indexOf(maxV), minI = arr.indexOf(minV);
+
+  // 연간 합계
+  const yearMap = {};
+  months.forEach((m,i)=>{
+    const y = m.match(/^'?(\d+)\./)?.[1];
+    if(y){ if(!yearMap[y]) yearMap[y]={sum:0,cnt:0}; yearMap[y].sum+=arr[i]||0; yearMap[y].cnt++; }
+  });
+
+  const tableRows = recentM.map((m,i)=>{
+    const ri = arr.length - n + i;
+    const v = arr[ri];
+    const q = qoq(ri), y = yoyM(ri);
+    const qStr = q!=null ? `<span style="color:${q>=0?'var(--green)':'var(--red)'};">${q>=0?'▲':'▼'}${Math.abs(q).toFixed(1)}%</span>` : '-';
+    const yStr = y!=null ? `<span style="color:${y>=0?'var(--green)':'var(--red)'};">${y>=0?'▲':'▼'}${Math.abs(y).toFixed(1)}%</span>` : '-';
+    return `<tr>
+      <td style="padding:8px 10px;font-size:11px;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap">${m}</td>
+      <td style="padding:8px 10px;font-size:12px;font-weight:700;font-family:var(--mono);text-align:right;border-bottom:1px solid var(--border);color:${v>=0?'var(--text)':'var(--red)'};">${fmt(v??0,1)}</td>
+      <td style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);font-size:11px">${qStr}</td>
+      <td style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);font-size:11px">${yStr}</td>
+    </tr>`;
+  }).join('');
+
+  const yearRows = Object.entries(yearMap).map(([y,obj])=>`
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;text-align:center">
+      <div style="font-size:10px;color:var(--text3);font-weight:700;margin-bottom:4px">${y}년 합계</div>
+      <div style="font-size:16px;font-weight:800;font-family:var(--mono)">${fmt(obj.sum,1)}<span style="font-size:10px;color:var(--text3);margin-left:2px">${info.unit}</span></div>
+      <div style="font-size:10px;color:var(--text3);margin-top:2px">${obj.cnt}개월</div>
+    </div>`).join('');
+
+  document.getElementById('fin-kpi-modal-body').innerHTML = `
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px">
+      <div>
+        <div style="font-size:20px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px">
+          <span>${info.icon}</span> ${info.label} 상세 분석
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:3px">${info.desc} · 단위: ${info.unit}</div>
+      </div>
+      <button onclick="document.getElementById('fin-kpi-modal').classList.remove('open')"
+        style="background:var(--bg3);border:none;color:var(--text3);font-size:18px;cursor:pointer;border-radius:8px;width:32px;height:32px;flex-shrink:0">✕</button>
+    </div>
+
+    <!-- 요약 KPI -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:18px">
+      ${[
+        ['최고', fmt(maxV,1), months[maxI]],
+        ['최저', fmt(minV,1), months[minI]],
+        ['평균', fmt(avgV,1), '기간 평균'],
+      ].map(([l,v,sub])=>`
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:10px;color:var(--text3);font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">${l}</div>
+          <div style="font-size:18px;font-weight:800;font-family:var(--mono);color:${info.color}">${v}<span style="font-size:10px;color:var(--text3);margin-left:2px">${info.unit}</span></div>
+          <div style="font-size:10px;color:var(--text3);margin-top:3px">${sub}</div>
+        </div>`).join('')}
+    </div>
+
+    <!-- 연간 합계 -->
+    <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">연간 합계</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-bottom:18px">
+      ${yearRows}
+    </div>
+
+    <!-- 월별 QoQ/YoY 테이블 -->
+    <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">최근 ${n}개월 추이</div>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;max-height:280px;overflow-y:auto">
+      <table style="width:100%;border-collapse:collapse">
+        <thead style="position:sticky;top:0;background:var(--bg3)">
+          <tr>
+            <th style="padding:8px 10px;font-size:10px;color:var(--text3);text-align:left;font-weight:700">월</th>
+            <th style="padding:8px 10px;font-size:10px;color:var(--text3);text-align:right;font-weight:700">실적(${info.unit})</th>
+            <th style="padding:8px 10px;font-size:10px;color:var(--text3);text-align:center;font-weight:700">QoQ(전월비)</th>
+            <th style="padding:8px 10px;font-size:10px;color:var(--text3);text-align:center;font-weight:700">YoY(전년동월)</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>`;
+
+  document.getElementById('fin-kpi-modal').classList.add('open');
+}
 window.renderHR=function(){
   const d=gd('hr');
+
+  // 퇴직률 계산 (퇴직/전사계)
+  const lastTotal = last(d.전사계)||1;
+  const monthlyQuit = last(d.퇴직계)||0;
+  const quitRate = (monthlyQuit/lastTotal*100);
+  const annualQuitEst = (sum(d.퇴직계)/d.전사계.reduce((s,v,i)=>s+(v||0),0)*12*100)||0;
+
   document.getElementById('hr-kpi').innerHTML=[
-    kpi('전사계 (최근월)',fmt(last(d.전사계)),'명',pct(last(d.전사계),d.전사계[0]),'gold',''),
+    kpi('전사계 (최근월)',fmt(last(d.전사계)),'명',pct(last(d.전사계),d.전사계[0]),'gold','기간 시작 대비'),
     kpi('영업직',fmt(last(d.영업직)),'명',pct(last(d.영업직),d.영업직[0]),'blue',''),
     kpi('SC직',fmt(last(d.SC직)),'명',pct(last(d.SC직),d.SC직[0]),'teal',''),
     kpi('일반직',fmt(last(d.일반직)),'명',null,'purple',''),
     kpi('소매채널',fmt(last(d.소매채널)),'명',pct(last(d.소매채널),d.소매채널[0]),'green',''),
-    kpi('기간 퇴직 합계',fmt(sum(d.퇴직계)),'명',null,'red',''),
+    kpi('퇴직률 (연환산)',fmt(annualQuitEst,1),'%',null,'red',`월 퇴직 평균 ${fmt(sum(d.퇴직계)/d.months.length,1)}명`),
   ].join('');
-  line('ch-hr-main',d.months,[{label:'전사계',data:d.전사계,fill:true},{label:'영업직',data:d.영업직,color:C.blue},{label:'SC직',data:d.SC직,color:C.teal},{label:'일반직',data:d.일반직,color:C.purple}]);
-  line('ch-hr-ch',d.months,[{label:'소매채널',data:d.소매채널,fill:true},{label:'도매채널',data:d.도매채널,color:C.teal}]);
+
+  // ① 인력 구성 추이 (전사계만 — 변화 없는 세부는 제거)
+  line('ch-hr-main',d.months,[
+    {label:'전사계',data:d.전사계,fill:true},
+    {label:'영업직',data:d.영업직,color:C.blue},
+    {label:'SC직',data:d.SC직,color:C.teal},
+    {label:'일반직',data:d.일반직,color:C.purple}
+  ]);
+
+  // ② 퇴직 추이 — 막대 (유의미한 변화 보여줌)
+  bar('ch-hr-ch',d.months,[{
+    label:'월별 퇴직',
+    data:d.퇴직계,
+    color:C.red,
+    bg:'rgba(239,68,68,0.65)'
+  }]);
+
+  // ③ 연마감 기준 인력 구성 도넛
+  // 각 연도 12월(또는 마지막월) 기준
+  const yearMap = {};
+  d.months.forEach((m,i)=>{
+    const y = m.match(/['\s]?(\d{2})\./)?.[1];
+    if(y) yearMap[y] = i; // 마지막 인덱스로 덮어씌움 → 연마감
+  });
+
+  // 가장 최근 연도의 연마감 기준으로 도넛
+  const years = Object.keys(yearMap).sort();
+  const latestYear = years[years.length-1];
+  const latestIdx = yearMap[latestYear];
+
+  const jobTypes = [
+    {label:'영업직', key:'영업직', color:'rgba(91,110,245,0.72)'},
+    {label:'SC직',   key:'SC직',   color:'rgba(6,182,212,0.72)'},
+    {label:'일반직', key:'일반직', color:'rgba(139,92,246,0.72)'},
+  ];
+  const vals = jobTypes.map(j=>d[j.key]?.[latestIdx]||0);
+
+  // 연마감 도넛
+  mkC('ch-hr-donut',{type:'doughnut',data:{
+    labels: jobTypes.map(j=>j.label),
+    datasets:[{
+      data: vals,
+      backgroundColor: jobTypes.map(j=>j.color),
+      borderColor: '#fff',
+      borderWidth: 2,
+    }]
+  },options:{animation:false,animations:false,responsive:false,maintainAspectRatio:false,cutout:'60%',
+    plugins:{
+      legend:{position:'bottom',labels:{boxWidth:10,padding:12,color:'#4a5380',font:{size:11},usePointStyle:true}},
+      tooltip:{backgroundColor:'#fff',titleColor:'#1a1f36',bodyColor:'#4a5380',borderColor:'#e4e7f0',borderWidth:1,cornerRadius:10,callbacks:{label:ctx=>`${ctx.label}: ${fmt(ctx.raw)}명 (${vals.reduce((s,v)=>s+v,0)?(ctx.raw/vals.reduce((s,v)=>s+v,0)*100).toFixed(1):0}%)`}}
+    }
+  }});
+
+  // ④ 연도별 비교 막대
   const hqs=['강북','강남','강서','동부','서부'];
   bar('ch-hr-hq',d.months,hqs.map((h,i)=>({label:h+' 본부',data:d[h+'본부']||[],color:COLORS[i],bg:COLORS_A[i]})),true);
 };
