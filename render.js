@@ -488,13 +488,13 @@ function selectFinCh(ch, btn){
     const org=gd('org');
     const totals=chKeys.map(k=>sum(org[k]||[]));
     const grand=sum(totals)||1;
-    mkC('ch-fin-ch-share',{type:'doughnut',data:{labels:chKeys,datasets:[{data:totals.map(v=>parseFloat((v/grand*100).toFixed(1))),backgroundColor:COLORS_A.slice(0,5).map(c=>c.replace('0.12','0.70')),borderColor:COLORS.slice(0,5),borderWidth:2,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:true,aspectRatio:1,cutout:'62%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:12,color:'#4a5380',font:{size:11},usePointStyle:true}},tooltip:{backgroundColor:'#fff',titleColor:'#1a1f36',bodyColor:'#4a5380',borderColor:'#e4e7f0',borderWidth:1,cornerRadius:10,callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw}%`}}}}});
+    mkC('ch-fin-ch-share',{type:'doughnut',data:{labels:chKeys,datasets:[{data:totals.map(v=>parseFloat((v/grand*100).toFixed(1))),backgroundColor:COLORS_A.slice(0,5).map(c=>c.replace('0.12','0.70')),borderColor:COLORS.slice(0,5),borderWidth:2,borderRadius:3}]},options:{animation:false,animations:false,responsive:false,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:12,color:'#4a5380',font:{size:11},usePointStyle:true}},tooltip:{backgroundColor:'#fff',titleColor:'#1a1f36',bodyColor:'#4a5380',borderColor:'#e4e7f0',borderWidth:1,cornerRadius:10,callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw}%`}}}}});
   } else {
     const org=gd('org');
     const chCapa=sum(org[ch]||[]);
     const otherCapa=chKeys.filter(k=>k!==ch).reduce((s,k)=>s+sum(org[k]||[]),0);
     const total=chCapa+otherCapa||1;
-    mkC('ch-fin-ch-share',{type:'doughnut',data:{labels:[ch,'기타 채널'],datasets:[{data:[parseFloat((chCapa/total*100).toFixed(1)),parseFloat((otherCapa/total*100).toFixed(1))],backgroundColor:[colA.replace('0.12','0.70'),'rgba(228,231,240,0.8)'],borderColor:[col,'#e4e7f0'],borderWidth:2,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:true,aspectRatio:1,cutout:'62%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:12,color:'#4a5380',font:{size:11},usePointStyle:true}},tooltip:{backgroundColor:'#fff',titleColor:'#1a1f36',bodyColor:'#4a5380',borderColor:'#e4e7f0',borderWidth:1,cornerRadius:10,callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw}%`}}}}});
+    mkC('ch-fin-ch-share',{type:'doughnut',data:{labels:[ch,'기타 채널'],datasets:[{data:[parseFloat((chCapa/total*100).toFixed(1)),parseFloat((otherCapa/total*100).toFixed(1))],backgroundColor:[colA.replace('0.12','0.70'),'rgba(228,231,240,0.8)'],borderColor:[col,'#e4e7f0'],borderWidth:2,borderRadius:3}]},options:{animation:false,animations:false,responsive:false,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:12,color:'#4a5380',font:{size:11},usePointStyle:true}},tooltip:{backgroundColor:'#fff',titleColor:'#1a1f36',bodyColor:'#4a5380',borderColor:'#e4e7f0',borderWidth:1,cornerRadius:10,callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw}%`}}}}});
   }
 
   // AI 카드 표시
@@ -543,44 +543,132 @@ async function runChannelAI(){
 }
 
 // ── 재무 렌더 ──
+// ── 전년동기대비 계산 ──
+function yoy(arr, months, idx){
+  // 같은 월 12개월 전 인덱스 찾기
+  if(!months || idx < 0) return null;
+  const curM = months[idx]; // 예: '25.1월'
+  const curNum = curM.replace(/[^0-9.월]/g,'');
+  // 1년 전 월 찾기
+  const prevIdx = months.slice(0, idx).reduce((found, m, i) => {
+    const mNum = m.replace(/[^0-9.월]/g,'');
+    // 월 부분만 비교 (예: .1월)
+    const curMonthPart = curM.replace(/^'?\d+\./,'');
+    const mMonthPart = m.replace(/^'?\d+\./,'');
+    if(curMonthPart === mMonthPart && i > found) return i;
+    return found;
+  }, -1);
+  if(prevIdx < 0 || !arr[prevIdx]) return null;
+  return prevIdx;
+}
+
+// 누계 전년동기대비: 올해 1월~현재월 합산 vs 작년 동기간 합산
+function yoySum(arr, months){
+  if(!arr || !months || arr.length === 0) return null;
+  const lastM = months[months.length - 1];
+  const lastMonthPart = lastM.replace(/^'?\d+\./,'');
+  // 작년 동월 인덱스 찾기
+  const prevYearLastIdx = months.slice(0, months.length).reduce((found, m, i) => {
+    const mPart = m.replace(/^'?\d+\./,'');
+    if(mPart === lastMonthPart && i < months.length - 1) return i;
+    return found;
+  }, -1);
+  if(prevYearLastIdx < 0) return null;
+  // 작년 1월 찾기 (같은 해에서 첫 번째 월)
+  const prevYearStr = months[prevYearLastIdx].match(/^'?(\d+)\./)?.[1];
+  const curYearStr = lastM.match(/^'?(\d+)\./)?.[1];
+  if(!prevYearStr || !curYearStr) return null;
+  const prevStart = months.findIndex(m => m.match(/^'?(\d+)\./)?.[1] === prevYearStr);
+  const curStart = months.findIndex(m => m.match(/^'?(\d+)\./)?.[1] === curYearStr);
+  if(prevStart < 0 || curStart < 0) return null;
+  const curLen = months.length - curStart;
+  const prevSlice = arr.slice(prevStart, prevStart + curLen);
+  const curSlice = arr.slice(curStart);
+  const prevTotal = prevSlice.reduce((s,v)=>s+(v||0),0);
+  const curTotal = curSlice.reduce((s,v)=>s+(v||0),0);
+  return {cur: curTotal, prev: prevTotal, pct: prevTotal ? (curTotal-prevTotal)/Math.abs(prevTotal)*100 : 0};
+}
+
 window.renderFinance=function(){
   const d=gd('finance');
-  document.getElementById('fin-kpi').innerHTML=[
-    kpi('총매출 (누계)',fmt(sum(d.총매출),1),'억원',pct(last(d.총매출),prev(d.총매출)),'gold',`최근월 ${fmt(last(d.총매출),1)}억`),
-    kpi('통신매출 (누계)',fmt(sum(d.통신매출),1),'억원',pct(last(d.통신매출),prev(d.통신매출)),'blue',`최근월 ${fmt(last(d.통신매출),1)}억`),
-    kpi('상품이익 (누계)',fmt(sum(d.상품이익),1),'억원',null,sum(d.상품이익)>=0?'green':'red',`최근월 ${fmt(last(d.상품이익),1)}억`),
-    kpi('영업이익 (누계)',fmt(sum(d.영업이익),1),'억원',pct(last(d.영업이익),prev(d.영업이익)),sum(d.영업이익)>=0?'green':'red',`최근월 ${fmt(last(d.영업이익),1)}억`),
-    kpi('판관비 (누계)',fmt(sum(d.판관비),1),'억원',null,'purple',`인건비 ${fmt(sum(d.인건비),1)}억`),
-    kpi('마케팅비 (누계)',fmt(sum(d.마케팅비),1),'억원',null,'orange',`최근월 ${fmt(last(d.마케팅비),1)}억`),
+
+  // 전년동기대비 계산
+  const yoyTot  = yoySum(d.총매출,  d.months);
+  const yoyTong = yoySum(d.통신매출, d.months);
+  const yoyOp   = yoySum(d.영업이익, d.months);
+  const yoyMkt  = yoySum(d.마케팅비, d.months);
+  const yoyOpex = yoySum(d.판관비,   d.months);
+
+  function yoyBadge(yoyObj){
+    if(!yoyObj) return null;
+    return yoyObj.pct;
+  }
+
+  // 비교기준 표시
+  const lastM = d.months[d.months.length-1];
+  const lastMonthPart = lastM.replace(/^'?\d+\./,'');
+  const curYearStr = lastM.match(/^'?(\d+)\./)?.[1];
+  const prevYearStr = curYearStr ? String(parseInt(curYearStr)-1) : '';
+  const compLabel = `전년동기대비 (${prevYearStr}년 1~${lastMonthPart} vs ${curYearStr}년 1~${lastMonthPart})`;
+
+  document.getElementById('fin-kpi').innerHTML=`
+    <div style="grid-column:1/-1;font-size:10px;color:var(--text3);background:rgba(91,110,245,.06);border:1px solid rgba(91,110,245,.15);border-radius:8px;padding:6px 12px;display:flex;align-items:center;gap:6px">
+      <span style="font-size:12px">📊</span> <b style="color:var(--primary)">비교기준:</b> ${compLabel}
+    </div>`+[
+    kpi('총매출 (누계)',fmt(yoyTot?.cur??sum(d.총매출),1),'억원',yoyBadge(yoyTot),'gold',`전년동기 ${fmt(yoyTot?.prev??0,1)}억`),
+    kpi('통신매출 (누계)',fmt(yoyTong?.cur??sum(d.통신매출),1),'억원',yoyBadge(yoyTong),'blue',`전년동기 ${fmt(yoyTong?.prev??0,1)}억`),
+    kpi('영업이익 (누계)',fmt(yoyOp?.cur??sum(d.영업이익),1),'억원',yoyBadge(yoyOp),(yoyOp?.cur??sum(d.영업이익))>=0?'green':'red',`전년동기 ${fmt(yoyOp?.prev??0,1)}억`),
+    kpi('판관비 (누계)',fmt(yoyOpex?.cur??sum(d.판관비),1),'억원',yoyBadge(yoyOpex),'purple',`인건비 ${fmt(sum(d.인건비),1)}억`),
+    kpi('마케팅비 (누계)',fmt(yoyMkt?.cur??sum(d.마케팅비),1),'억원',yoyBadge(yoyMkt),'orange',`전년동기 ${fmt(yoyMkt?.prev??0,1)}억`),
   ].join('');
 
-  // ① 매출 추이 — 선 그래프 (트렌드 파악용)
-  mkC('ch-rev',{type:'line',data:{labels:d.months,datasets:[
-    {label:'총매출',data:d.총매출,borderColor:C.primary,backgroundColor:C.primaryA,borderWidth:2.5,tension:.4,fill:true,pointRadius:0,pointHoverRadius:5,yAxisID:'y'},
-    {label:'통신매출',data:d.통신매출,borderColor:C.teal,backgroundColor:'transparent',borderWidth:2,tension:.4,pointRadius:0,pointHoverRadius:4,yAxisID:'y',borderDash:[5,3]},
-    {label:'영업이익',data:d.영업이익,borderColor:C.green,backgroundColor:'transparent',borderWidth:2,tension:.4,pointRadius:2,pointHoverRadius:5,yAxisID:'y2'},
-  ]},options:baseOpts({scales:{
-    x:{grid:{color:'rgba(228,231,240,.6)'},ticks:{maxRotation:45,color:'#8b93b8',font:{size:10}},border:{display:false}},
-    y:{grid:{color:'rgba(228,231,240,.6)'},ticks:{color:'#8b93b8',font:{size:10}},title:{display:true,text:'매출 (억원)',color:'#8b93b8',font:{size:10}},border:{display:false}},
-    y2:{position:'right',grid:{display:false},ticks:{color:'#10b981',font:{size:10}},title:{display:true,text:'이익 (억원)',color:'#10b981',font:{size:10}},border:{display:false}}
-  }})});
+  // 공통 툴팁/포인트 설정 (융통성 높임)
+  const pointCfg = {
+    pointRadius: 4,
+    pointHoverRadius: 8,
+    pointHitRadius: 24,      // ← 클릭/호버 감지 반경 대폭 확대
+    pointBorderWidth: 2,
+    pointBorderColor: '#fff',
+  };
 
-  // ② 영업이익 — 막대 그래프 (월별 흑자/적자 한눈에)
+  // 월 클릭 → 해당월 필터 자동 적용
+  const onMonthClick = (evt, elements, chart) => {
+    if(!elements.length) return;
+    const idx = elements[0].index;
+    S.pi = {s: idx, e: idx};
+    buildPB('pb-finance','renderFinance');
+    renderFinance();
+    showToast(`📅 ${d.months[idx]} 기준으로 필터 변경`);
+  };
+
+  // ① 매출 추이 — 선 그래프
+  mkC('ch-rev',{type:'line',data:{labels:d.months,datasets:[
+    {label:'총매출',...pointCfg,data:d.총매출,borderColor:C.primary,backgroundColor:C.primaryA,borderWidth:2.5,tension:.4,fill:true,yAxisID:'y'},
+    {label:'통신매출',...pointCfg,data:d.통신매출,borderColor:C.teal,backgroundColor:'transparent',borderWidth:2,tension:.4,borderDash:[5,3],yAxisID:'y'},
+    {label:'영업이익',...pointCfg,pointRadius:4,data:d.영업이익,borderColor:C.green,backgroundColor:'transparent',borderWidth:2,tension:.4,yAxisID:'y2'},
+  ]},options:baseOpts({
+    onClick: onMonthClick,
+    onHover:(e,el)=>{ e.native.target.style.cursor = el.length?'pointer':'default'; },
+    scales:{
+      x:{grid:{color:'rgba(228,231,240,.6)'},ticks:{maxRotation:45,color:'#8b93b8',font:{size:10}},border:{display:false}},
+      y:{grid:{color:'rgba(228,231,240,.6)'},ticks:{color:'#8b93b8',font:{size:10}},title:{display:true,text:'매출 (억원)',color:'#8b93b8',font:{size:10}},border:{display:false}},
+      y2:{position:'right',grid:{display:false},ticks:{color:'#10b981',font:{size:10}},title:{display:true,text:'이익 (억원)',color:'#10b981',font:{size:10}},border:{display:false}}
+    }
+  })});
+
+  // ② 영업이익 막대
   mkC('ch-profit',{type:'bar',data:{labels:d.months,datasets:[{
-    label:'영업이익',
-    data:d.영업이익,
+    label:'영업이익',data:d.영업이익,
     backgroundColor:d.영업이익.map(v=>v>=0?'rgba(16,185,129,0.75)':'rgba(239,68,68,0.75)'),
     borderColor:d.영업이익.map(v=>v>=0?C.green:C.red),
-    borderWidth:0,
-    borderRadius:4,
-    borderSkipped:false,
-  }]},options:baseOpts({plugins:{
-    legend:{display:false},
-    tooltip:{backgroundColor:'#fff',titleColor:'#1a1f36',bodyColor:'#4a5380',borderColor:'#e4e7f0',borderWidth:1,cornerRadius:10},
-    annotation:{annotations:{zero:{type:'line',y:0,borderColor:'rgba(0,0,0,.15)',borderWidth:1.5}}}
-  }})});
+    borderWidth:0,borderRadius:4,borderSkipped:false,
+  }]},options:baseOpts({
+    onClick: onMonthClick,
+    onHover:(e,el)=>{ e.native.target.style.cursor = el.length?'pointer':'default'; },
+    plugins:{legend:{display:false},tooltip:{backgroundColor:'#fff',titleColor:'#1a1f36',bodyColor:'#4a5380',borderColor:'#e4e7f0',borderWidth:1,cornerRadius:10}},
+  })});
 
-  // ③ 비용 구조 — 누적 막대 그래프 (구성 비율 파악)
+  // ③ 비용 구조 누적 막대
   mkC('ch-cost',{type:'bar',data:{labels:d.months,datasets:[
     {label:'인건비',data:d.인건비,backgroundColor:'rgba(91,110,245,0.72)',borderWidth:0,borderRadius:{topLeft:0,topRight:0,bottomLeft:4,bottomRight:4},stack:'s'},
     {label:'마케팅비',data:d.마케팅비,backgroundColor:'rgba(249,115,22,0.72)',borderWidth:0,stack:'s'},
@@ -590,9 +678,7 @@ window.renderFinance=function(){
     y:{stacked:true,grid:{color:'rgba(228,231,240,.6)'},ticks:{color:'#8b93b8',font:{size:10}},border:{display:false}}
   }})});
 
-  // 채널 초기 렌더 (전체 합산)
   selectFinCh('all', document.querySelector('#fin-ch-tabs .ch-tab'));
-  // AI 코멘트 초기화
   document.getElementById('fin-ai-body').innerHTML = `<div style="font-size:12px;color:var(--text3);text-align:center;padding:10px 0">위 버튼을 클릭하면 선택 기간의 재무 데이터를 AI가 분석합니다</div>`;
   document.getElementById('fin-ai-subtitle').textContent = `분석 기간: ${getPL()}`;
   document.getElementById('fin-ai-btn').disabled = false;
@@ -603,17 +689,127 @@ window.renderFinance=function(){
 window.renderWireless=function(){
   const d=gd('wireless'),od=gd('org');
   document.getElementById('wl-kpi').innerHTML=[
-    kpi('유지 가입자',fmt(last(d.유지)),'명',pct(last(d.유지),d.유지[0]),'blue','일반후불 전체'),
-    kpi('CAPA (최근월)',fmt(last(d.CAPA)),'명',pct(last(d.CAPA),prev(d.CAPA)),'gold','신규+기변'),
-    kpi('해지 (최근월)',fmt(last(d.해지)),'명',pct(last(d.해지),prev(d.해지)),'red','직권해지 포함'),
-    kpi('순증 (최근월)',fmt(last(d.순증)),'명',null,last(d.순증)>=0?'green':'red','유지 전월차'),
-    kpi('기간 CAPA 합계',fmt(sum(d.CAPA)),'명',null,'teal',`월평균 ${fmt(Math.round(sum(d.CAPA)/d.months.length))}명`),
-    kpi('기간 해지 합계',fmt(sum(d.해지)),'명',null,'orange',`월평균 ${fmt(Math.round(sum(d.해지)/d.months.length))}명`),
+    kpi('유지 가입자',fmt(last(d.유지)),'건',pct(last(d.유지),d.유지[0]),'blue','일반후불 전체'),
+    kpi('CAPA (최근월)',fmt(last(d.CAPA)),'건',pct(last(d.CAPA),prev(d.CAPA)),'gold','신규+기변'),
+    kpi('해지 (최근월)',fmt(last(d.해지)),'건',pct(last(d.해지),prev(d.해지)),'red','직권해지 포함'),
+    kpi('순증 (최근월)',fmt(last(d.순증)),'건',null,last(d.순증)>=0?'green':'red','유지 전월차'),
+    kpi('기간 CAPA 합계',fmt(sum(d.CAPA)),'건',null,'teal',`월평균 ${fmt(Math.round(sum(d.CAPA)/d.months.length))}건`),
+    kpi('기간 해지 합계',fmt(sum(d.해지)),'건',null,'orange',`월평균 ${fmt(Math.round(sum(d.해지)/d.months.length))}건`),
   ].join('');
-  mkC('ch-wl-main',{type:'line',data:{labels:d.months,datasets:[{label:'유지',data:d.유지,borderColor:C.blue,backgroundColor:C.blueA,borderWidth:2,pointRadius:0,tension:.3,fill:true,yAxisID:'y'},{label:'CAPA',data:d.CAPA,borderColor:C.gold,backgroundColor:'transparent',borderWidth:2,pointRadius:2,tension:.3,yAxisID:'y2'},{label:'해지',data:d.해지,borderColor:C.red,backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:.3,yAxisID:'y2'}]},options:baseOpts({scales:{x:{grid:{color:'rgba(42,53,85,0.5)'},ticks:{maxRotation:45,color:'#5c6e9a',font:{size:10}}},y:{grid:{color:'rgba(42,53,85,0.5)'},ticks:{color:'#5c6e9a'},title:{display:true,text:'유지(명)',color:'#5c6e9a'}},y2:{position:'right',grid:{display:false},ticks:{color:'#5c6e9a'},title:{display:true,text:'CAPA/해지(명)',color:'#5c6e9a'}}}})});
-  mkC('ch-wl-net',{type:'bar',data:{labels:d.months,datasets:[{label:'순증',data:d.순증,backgroundColor:d.순증.map(v=>v>=0?C.greenA:C.redA),borderColor:d.순증.map(v=>v>=0?C.green:C.red),borderWidth:1.5}]},options:baseOpts()});
-  bar('ch-wl-ch',od.months,[{label:'소매',data:od.소매},{label:'도매',data:od.도매,color:C.teal,bg:C.tealA},{label:'디지털',data:od.디지털,color:C.blue,bg:C.blueA},{label:'B2B',data:od.B2B,color:C.purple,bg:C.purpleA}],true);
+
+  // 월 클릭 → 해당월 무선 현황 팝업
+  const onWlMonthClick = (evt, elements) => {
+    if(!elements.length) return;
+    const idx = elements[0].index;
+    openWlMonthModal(idx);
+  };
+
+  const pointCfg = { pointRadius:4, pointHoverRadius:8, pointHitRadius:24, pointBorderWidth:2, pointBorderColor:'#fff' };
+
+  mkC('ch-wl-main',{type:'line',data:{labels:d.months,datasets:[
+    {label:'유지',...pointCfg,data:d.유지,borderColor:C.blue,backgroundColor:C.blueA,borderWidth:2,tension:.3,fill:true,yAxisID:'y'},
+    {label:'CAPA',...pointCfg,data:d.CAPA,borderColor:C.gold,backgroundColor:'transparent',borderWidth:2,tension:.3,yAxisID:'y2'},
+    {label:'해지',...pointCfg,data:d.해지,borderColor:C.red,backgroundColor:'transparent',borderWidth:1.5,tension:.3,yAxisID:'y2'},
+  ]},options:baseOpts({
+    onClick: onWlMonthClick,
+    onHover:(e,el)=>{ e.native.target.style.cursor=el.length?'pointer':'default'; },
+    scales:{
+      x:{grid:{color:'rgba(228,231,240,.6)'},ticks:{maxRotation:45,color:'#8b93b8',font:{size:10}},border:{display:false}},
+      y:{grid:{color:'rgba(228,231,240,.6)'},ticks:{color:'#8b93b8',font:{size:10}},title:{display:true,text:'유지(건)',color:'#8b93b8',font:{size:10}},border:{display:false}},
+      y2:{position:'right',grid:{display:false},ticks:{color:'#8b93b8',font:{size:10}},title:{display:true,text:'CAPA/해지(건)',color:'#8b93b8',font:{size:10}},border:{display:false}}
+    }
+  })});
+
+  mkC('ch-wl-net',{type:'bar',data:{labels:d.months,datasets:[{
+    label:'순증',data:d.순증,
+    backgroundColor:d.순증.map(v=>v>=0?'rgba(16,185,129,0.75)':'rgba(239,68,68,0.75)'),
+    borderColor:d.순증.map(v=>v>=0?C.green:C.red),
+    borderWidth:0,borderRadius:4,borderSkipped:false,
+  }]},options:baseOpts({
+    onClick: onWlMonthClick,
+    onHover:(e,el)=>{ e.native.target.style.cursor=el.length?'pointer':'default'; },
+    plugins:{legend:{display:false}}
+  })});
+
+  bar('ch-wl-ch',od.months,[
+    {label:'소매',data:od.소매},
+    {label:'도매',data:od.도매,color:C.teal,bg:'rgba(6,182,212,0.72)'},
+    {label:'디지털',data:od.디지털,color:C.blue,bg:'rgba(59,130,246,0.72)'},
+    {label:'B2B',data:od.B2B,color:C.purple,bg:'rgba(139,92,246,0.72)'},
+  ],true);
 };
+
+// ── 무선 월별 현황 팝업 ──
+function openWlMonthModal(idx){
+  const d=gd('wireless'), od=gd('org');
+  const month = d.months[idx];
+  const prevIdx = idx > 0 ? idx-1 : 0;
+
+  function diffBadge(cur, prv){
+    if(!prv) return '';
+    const p = ((cur-prv)/Math.abs(prv)*100).toFixed(1);
+    const up = cur >= prv;
+    return `<span style="font-size:10px;font-weight:700;color:${up?'var(--green)':'var(--red)'};">${up?'▲':'▼'}${Math.abs(p)}%</span>`;
+  }
+  function row(label, val, unit, cur, prv){
+    return `<tr>
+      <td style="padding:9px 12px;font-size:12px;color:var(--text2);border-bottom:1px solid var(--border)">${label}</td>
+      <td style="padding:9px 12px;font-size:13px;font-weight:700;font-family:var(--mono);text-align:right;border-bottom:1px solid var(--border)">${fmt(val)}<span style="font-size:10px;color:var(--text3);margin-left:3px">${unit}</span></td>
+      <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border)">${diffBadge(cur,prv)}</td>
+    </tr>`;
+  }
+
+  const chLabels = ['소매','도매','디지털','B2B','소상공인'];
+  const chRows = chLabels.map(ch => {
+    const v = od[ch]?.[idx] ?? 0;
+    const pv = od[ch]?.[prevIdx] ?? 0;
+    return row(ch+' CAPA', v, '건', v, pv);
+  }).join('');
+
+  const html = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div>
+        <div style="font-size:18px;font-weight:800;color:var(--text)">${month} 무선 가입자 현황</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">전월 대비 증감 포함 · 단위: 건</div>
+      </div>
+      <button onclick="document.getElementById('wl-month-modal').classList.remove('open')"
+        style="background:var(--bg3);border:none;color:var(--text3);font-size:18px;cursor:pointer;border-radius:8px;width:32px;height:32px">✕</button>
+    </div>
+
+    <!-- 핵심 KPI -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      ${[
+        ['유지 가입자', d.유지?.[idx], d.유지?.[prevIdx], '건', 'var(--blue)'],
+        ['CAPA (신규+기변)', d.CAPA?.[idx], d.CAPA?.[prevIdx], '건', 'var(--gold)'],
+        ['해지', d.해지?.[idx], d.해지?.[prevIdx], '건', 'var(--red)'],
+        ['순증', d.순증?.[idx], d.순증?.[prevIdx], '건', d.순증?.[idx]>=0?'var(--green)':'var(--red)'],
+      ].map(([label, cur, prv, unit, color])=>`
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
+          <div style="font-size:10px;color:var(--text3);font-weight:700;letter-spacing:.5px;margin-bottom:6px;text-transform:uppercase">${label}</div>
+          <div style="font-size:22px;font-weight:800;font-family:var(--mono);color:${color}">${fmt(cur??0)}<span style="font-size:11px;color:var(--text3);margin-left:4px">${unit}</span></div>
+          <div style="font-size:10px;margin-top:4px">${diffBadge(cur??0, prv??0)} <span style="color:var(--text3)">전월 ${fmt(prv??0)}건</span></div>
+        </div>
+      `).join('')}
+    </div>
+
+    <!-- 채널별 CAPA -->
+    <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">채널별 CAPA</div>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:var(--bg3)">
+            <th style="padding:8px 12px;font-size:10px;color:var(--text3);text-align:left;font-weight:700;letter-spacing:.5px">채널</th>
+            <th style="padding:8px 12px;font-size:10px;color:var(--text3);text-align:right;font-weight:700">CAPA (건)</th>
+            <th style="padding:8px 12px;font-size:10px;color:var(--text3);text-align:center;font-weight:700">전월비</th>
+          </tr>
+        </thead>
+        <tbody>${chRows}</tbody>
+      </table>
+    </div>`;
+
+  document.getElementById('wl-month-modal-body').innerHTML = html;
+  document.getElementById('wl-month-modal').classList.add('open');
+}
 
 // ── 유선 ──
 window.renderWired=function(){
@@ -637,7 +833,7 @@ window.renderOrg=function(){
   const tots=chs.map(c=>sum(d[c]||[])),grand=sum(tots);
   document.getElementById('org-kpi').innerHTML=chs.map((c,i)=>kpi(c+' CAPA',fmt(tots[i]),'명',null,['gold','teal','blue','purple','orange'][i],`비중 ${grand?((tots[i]/grand*100).toFixed(1)):0}%`)).join('');
   bar('ch-org-bar',d.months,chs.map((c,i)=>({label:c,data:d[c]||[],color:COLORS[i],bg:COLORS_A[i]})),true);
-  mkC('ch-org-pie',{type:'doughnut',data:{labels:chs,datasets:[{data:tots,backgroundColor:COLORS_A.slice(0,5).map(c=>c.replace('0.12','0.70')),borderColor:COLORS.slice(0,5),borderWidth:2,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:true,aspectRatio:1,cutout:'60%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:12,color:'#4a5380',font:{size:11},usePointStyle:true}},tooltip:{backgroundColor:'#fff',titleColor:'#1a1f36',bodyColor:'#4a5380',borderColor:'#e4e7f0',borderWidth:1,cornerRadius:10}}}});
+  mkC('ch-org-pie',{type:'doughnut',data:{labels:chs,datasets:[{data:tots,backgroundColor:COLORS_A.slice(0,5).map(c=>c.replace('0.12','0.70')),borderColor:COLORS.slice(0,5),borderWidth:2,borderRadius:3}]},options:{animation:false,animations:false,responsive:false,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:12,color:'#4a5380',font:{size:11},usePointStyle:true}},tooltip:{backgroundColor:'#fff',titleColor:'#1a1f36',bodyColor:'#4a5380',borderColor:'#e4e7f0',borderWidth:1,cornerRadius:10}}}});
   line('ch-org-trend',d.months,[{label:'소매',data:d.소매},{label:'도매',data:d.도매,color:C.teal},{label:'디지털',data:d.디지털,color:C.blue}]);
 };
 

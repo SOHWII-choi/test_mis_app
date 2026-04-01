@@ -159,8 +159,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .chart-sub{font-size:10px;color:var(--text3);margin-bottom:16px;font-weight:500}
 .cw canvas{max-height:240px;width:100%!important}.cw-tall canvas{max-height:300px}
 /* 도넛/파이 차트 — 정사각형 비율 유지 */
-.cw-donut{display:flex;align-items:center;justify-content:center;padding:8px 0}
-.cw-donut canvas{max-height:260px;max-width:260px;width:100%!important;aspect-ratio:1}
+.cw-donut{display:flex;align-items:center;justify-content:center;padding:8px 0;min-height:240px}
+.cw-donut canvas{width:240px!important;height:240px!important;max-width:260px;max-height:260px;flex-shrink:0}
 
 /* SECTION HEADER */
 .sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
