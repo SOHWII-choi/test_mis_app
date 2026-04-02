@@ -1070,32 +1070,40 @@ function openKpiPopup(key){
         <div style="font-size:10px;color:#8b93b8;margin-top:2px">${unit}·${o.n}개월</div>
       </div>`).join('');
 
-    // 패널 없으면 생성 (오른쪽 슬라이드 패널)
+    // 패널을 createElement로 생성 (innerHTML 파싱 문제 방지)
     let modal = document.getElementById('kpi-popup-modal');
     if(!modal){
       const st = document.createElement('style');
-      st.textContent = `
-        #kpi-popup-modal{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.35);backdrop-filter:blur(3px)}
-        #kpi-popup-modal.open{display:block}
-        #kpi-popup-panel{position:fixed;top:0;right:-600px;width:min(580px,100vw);height:100dvh;background:#fff;box-shadow:-8px 0 40px rgba(0,0,0,.15);display:flex;flex-direction:column;transition:right .3s cubic-bezier(.4,0,.2,1);z-index:10000}
-        #kpi-popup-modal.open #kpi-popup-panel{right:0}
-        #kpi-popup-header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid #e4e7f0;flex-shrink:0;background:#fff}
-        #kpi-popup-scroll{flex:1;overflow-y:auto;padding:20px 24px 32px}
-        #kpi-close-btn{background:#f0f2f7;border:none;color:#6b7280;font-size:20px;cursor:pointer;border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;transition:.15s;flex-shrink:0}
-        #kpi-close-btn:hover{background:#e4e7f0;color:#1a1f36}
-        @media(max-width:640px){#kpi-popup-panel{width:100vw}}
-      `;
+      st.textContent = '#kpi-popup-modal{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.35);backdrop-filter:blur(3px)}'
+        + '#kpi-popup-modal.open{display:block}'
+        + '#kpi-popup-panel{position:fixed;top:0;right:-620px;width:min(580px,100vw);height:100dvh;background:#fff;box-shadow:-8px 0 40px rgba(0,0,0,.15);display:flex;flex-direction:column;transition:right .32s cubic-bezier(.4,0,.2,1);z-index:10000}'
+        + '#kpi-popup-modal.open #kpi-popup-panel{right:0}'
+        + '#kpi-popup-header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid #e4e7f0;flex-shrink:0}'
+        + '#kpi-popup-scroll{flex:1;overflow-y:auto;padding:20px 24px 32px}'
+        + '#kpi-close-btn{background:#f0f2f7;border:none;color:#6b7280;font-size:20px;cursor:pointer;border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center}'
+        + '#kpi-close-btn:hover{background:#e4e7f0;color:#1a1f36}'
+        + '@media(max-width:640px){#kpi-popup-panel{width:100vw}}';
       document.head.appendChild(st);
+
       modal = document.createElement('div');
       modal.id = 'kpi-popup-modal';
-      modal.onclick = e => { if(e.target===modal){ modal.classList.remove('open'); }};
-      modal.innerHTML = `<div id="kpi-popup-panel">
-        <div id="kpi-popup-header">
-          <div id="kpi-popup-title" style="font-size:16px;font-weight:800;color:#1a1f36"></div>
-          <button id="kpi-close-btn" onclick="document.getElementById('kpi-popup-modal').classList.remove('open')">✕</button>
-        </div>
-        <div id="kpi-popup-scroll"><div id="kpi-popup-body"></div></div>
-      </div>`;
+      modal.addEventListener('click', e => { if(e.target===modal) modal.classList.remove('open'); });
+
+      const panel = document.createElement('div');  panel.id = 'kpi-popup-panel';
+      const hdr   = document.createElement('div');  hdr.id   = 'kpi-popup-header';
+      const title = document.createElement('div');  title.id = 'kpi-popup-title';
+      title.style.cssText = 'font-size:16px;font-weight:800;color:#1a1f36;display:flex;align-items:center;gap:8px;flex:1;min-width:0';
+      const closeBtn = document.createElement('button'); closeBtn.id = 'kpi-close-btn';
+      closeBtn.textContent = '✕';
+      closeBtn.addEventListener('click', () => modal.classList.remove('open'));
+      hdr.appendChild(title); hdr.appendChild(closeBtn);
+
+      const scroll = document.createElement('div'); scroll.id = 'kpi-popup-scroll';
+      const body   = document.createElement('div'); body.id   = 'kpi-popup-body';
+      scroll.appendChild(body);
+
+      panel.appendChild(hdr); panel.appendChild(scroll);
+      modal.appendChild(panel);
       document.body.appendChild(modal);
     }
 
