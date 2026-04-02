@@ -135,6 +135,28 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .kpi-card{background:#fff;border:1px solid var(--border);border-radius:var(--card-r);padding:18px;position:relative;overflow:hidden;transition:.2s;box-shadow:var(--shadow)}
 .kpi-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
 .kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--card-r) var(--card-r) 0 0}
+
+/* ── KPI 카드 button 리셋 ── */
+button.kpi-card{
+  all:unset;
+  display:block;
+  box-sizing:border-box;
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:var(--card-r);
+  padding:18px;
+  position:relative;
+  overflow:hidden;
+  transition:.2s;
+  box-shadow:var(--shadow);
+  cursor:pointer;
+  width:100%;
+  text-align:left;
+  font-family:var(--font);
+}
+button.kpi-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
+button.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--card-r) var(--card-r) 0 0}
+
 .kc-gold::before{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
 .kc-teal::before{background:linear-gradient(90deg,#06b6d4,#22d3ee)}
 .kc-blue::before{background:linear-gradient(90deg,#3b82f6,#60a5fa)}
