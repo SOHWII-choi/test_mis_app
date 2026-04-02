@@ -1128,7 +1128,8 @@ function openKpiPopup(key){
     modal.classList.add('open');
   } catch(e){
     console.error('KPI popup error:', e);
-    alert('오류: ' + e.message + '\nkey: ' + key);
+    showToast('오류: ' + e.message);
+    console.error('KPI popup error:', e, 'key:', key);
   }
 }
 
