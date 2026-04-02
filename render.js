@@ -1107,8 +1107,34 @@ function openKpiPopup(key){
       document.body.appendChild(modal);
     }
 
-    document.getElementById('kpi-popup-title').innerHTML = `<span style="font-size:22px;margin-right:8px">${icon}</span>${label} 상세분석`;
-    document.getElementById('kpi-popup-body').innerHTML = `
+    // 패널 내부 요소 안전하게 접근
+    let titleEl = modal.querySelector('#kpi-popup-title');
+    let bodyEl  = modal.querySelector('#kpi-popup-body');
+
+    // 요소가 없으면 (구버전 캐시) 패널 내부 재구성
+    if(!titleEl || !bodyEl){
+      modal.innerHTML = '';
+      const panel2  = document.createElement('div'); panel2.id = 'kpi-popup-panel';
+      panel2.style.cssText = 'position:fixed;top:0;right:0;width:min(580px,100vw);height:100dvh;background:#fff;box-shadow:-8px 0 40px rgba(0,0,0,.15);display:flex;flex-direction:column;z-index:10000;overflow:hidden';
+      const hdr2    = document.createElement('div'); hdr2.id = 'kpi-popup-header';
+      hdr2.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid #e4e7f0;flex-shrink:0';
+      titleEl = document.createElement('div'); titleEl.id = 'kpi-popup-title';
+      titleEl.style.cssText = 'font-size:16px;font-weight:800;color:#1a1f36;display:flex;align-items:center;gap:8px;flex:1';
+      const closeBtn2 = document.createElement('button');
+      closeBtn2.style.cssText = 'background:#f0f2f7;border:none;color:#6b7280;font-size:20px;cursor:pointer;border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center';
+      closeBtn2.textContent = '✕';
+      closeBtn2.onclick = () => modal.classList.remove('open');
+      hdr2.appendChild(titleEl); hdr2.appendChild(closeBtn2);
+      const scroll2 = document.createElement('div'); scroll2.style.cssText = 'flex:1;overflow-y:auto;padding:20px 24px 32px';
+      bodyEl = document.createElement('div'); bodyEl.id = 'kpi-popup-body';
+      scroll2.appendChild(bodyEl);
+      panel2.appendChild(hdr2); panel2.appendChild(scroll2);
+      modal.appendChild(panel2);
+    }
+
+    // 타이틀 설정
+    titleEl.innerHTML = `<span style="font-size:22px">${icon}</span><span>${label} 상세분석</span>`;
+    bodyEl.innerHTML = `
       <div style="font-size:11px;color:#8b93b8;margin-bottom:16px">단위: ${unit} · 총 ${arr.length}개월</div>
       <div style="background:linear-gradient(135deg,rgba(91,110,245,.06),rgba(6,182,212,.04));border:1px solid rgba(91,110,245,.15);border-radius:12px;padding:14px 16px;margin-bottom:16px">
         <div style="font-size:10px;font-weight:700;color:#5b6ef5;margin-bottom:6px;letter-spacing:.5px;text-transform:uppercase">📊 트렌드 요약</div>
