@@ -207,7 +207,7 @@
           <div class="chart-card">
             <div class="chart-title">매출 기여도 비교</div>
             <div class="chart-sub">채널별 매출 기여 비율 (%)</div>
-            <div class="cw-donut"><canvas id="ch-fin-ch-share"></canvas></div>
+            <div class="cw-donut"><div class="donut-wrap"><canvas id="ch-fin-ch-share"></canvas></div></div>
           </div>
         </div>
 
@@ -254,7 +254,7 @@
         <div id="org-kpi" class="kpi-grid"></div>
         <div class="chart-grid">
           <div class="chart-card wide"><div class="chart-title">채널별 CAPA 실적 (stacked)</div><div class="chart-sub">소매 · 도매 · 디지털 · B2B · 소상공인 (명)</div><div class="cw cw-tall" data-tall="1"><canvas data-h="300" id="ch-org-bar"></canvas></div></div>
-          <div class="chart-card"><div class="chart-title">채널 구성 비율</div><div class="chart-sub">기간 합산 기준 (%)</div><div class="cw-donut"><canvas id="ch-org-pie"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title">채널 구성 비율</div><div class="chart-sub">기간 합산 기준 (%)</div><div class="cw-donut"><div class="donut-wrap"><canvas id="ch-org-pie"></canvas></div></div></div>
           <div class="chart-card"><div class="chart-title">채널별 추이 비교</div><div class="chart-sub">소매 / 도매 / 디지털 (명)</div><div class="cw"><canvas id="ch-org-trend"></canvas></div></div>
         </div>
       </div>
@@ -349,7 +349,7 @@
         <div class="chart-grid">
           <div class="chart-card wide"><div class="chart-title">인력 구성 추이</div><div class="chart-sub">전사계 · 영업직 · SC직 · 일반직 (명)</div><div class="cw cw-tall" data-tall="1"><canvas data-h="300" id="ch-hr-main"></canvas></div></div>
           <div class="chart-card"><div class="chart-title">월별 퇴직 현황</div><div class="chart-sub">월별 퇴직 인원 (명)</div><div class="cw"><canvas id="ch-hr-ch"></canvas></div></div>
-          <div class="chart-card"><div class="chart-title">직군별 인력 구성</div><div class="chart-sub">연마감 기준 영업직 · SC직 · 일반직 비율</div><div class="cw-donut"><canvas id="ch-hr-donut"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title">직군별 인력 구성</div><div class="chart-sub">연마감 기준 영업직 · SC직 · 일반직 비율</div><div class="cw-donut"><div class="donut-wrap"><canvas id="ch-hr-donut"></canvas></div></div></div>
           <div class="chart-card wide"><div class="chart-title">영업본부별 인력 추이</div><div class="chart-sub">강북/강남/강서/동부/서부 (명)</div><div class="cw"><canvas id="ch-hr-hq"></canvas></div></div>
         </div>
       </div>
@@ -596,7 +596,7 @@
 </div>
 <div id="toast"></div>
 
-<!-- KPI 팝업은 JS에서 동적 생성 -->
+
 
 <!-- ══════════ 무선 월별 현황 팝업 ══════════ -->
 <div id="wl-month-modal" onclick="if(event.target===this)this.classList.remove('open')"

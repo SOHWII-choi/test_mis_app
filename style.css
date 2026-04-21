@@ -181,8 +181,10 @@ button.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height
 .chart-sub{font-size:10px;color:var(--text3);margin-bottom:16px;font-weight:500}
 .cw canvas{max-height:240px;width:100%!important}.cw-tall canvas{max-height:300px}
 /* 도넛/파이 차트 — 정사각형 비율 유지 */
-.cw-donut{display:flex;align-items:center;justify-content:center;padding:8px 0;min-height:240px}
-.cw-donut canvas{width:240px!important;height:240px!important;max-width:260px;max-height:260px;flex-shrink:0}
+.cw-donut{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:12px 0 8px;min-height:280px;width:100%}
+.cw-donut .donut-wrap{width:240px;height:240px;flex-shrink:0;position:relative}
+.cw-donut canvas{position:absolute;top:0;left:0;width:240px!important;height:240px!important}
+.cw-donut .donut-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
 
 /* SECTION HEADER */
 .sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
@@ -411,3 +413,20 @@ button.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height
   .forecast-panel{width:100%;max-height:90dvh;border-radius:18px 18px 0 0}
 }
 @media(max-width:380px){.kpi-grid{grid-template-columns:1fr}.topbar-logo{font-size:11px;letter-spacing:1px}}
+
+/* ── KPI 개선 ── */
+.kpi-card[data-kpi-key]:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(91,110,245,.15);border-color:rgba(91,110,245,.3)}
+.kpi-card[data-kpi-key]::after{content:'↗';position:absolute;top:10px;right:12px;font-size:11px;color:var(--text3);opacity:0;transition:.2s}
+.kpi-card[data-kpi-key]:hover::after{opacity:1}
+.sparkline-wrap{margin-top:8px;height:28px;width:100%}
+.sparkline-wrap canvas{width:100%!important;height:28px!important}
+.trend-up{color:#10b981!important}
+.trend-dn{color:#ef4444!important}
+.section-divider{height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);margin:8px 0}
+/* ── 차트 개선 ── */
+.chart-card{position:relative}
+.chart-badge{position:absolute;top:14px;right:14px;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;background:rgba(91,110,245,.1);color:var(--primary)}
+/* ── 슬라이드 패널 개선 ── */
+#kpi-side-panel{border-left:3px solid var(--primary)}
+#kpi-overlay{animation:fadeIn .2s}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
